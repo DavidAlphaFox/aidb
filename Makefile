@@ -2,7 +2,7 @@ PROJECT = aidb
 PROJECT_DESCRIPTION = database tools for production from ailink.io
 PROJECT_VERSION = 0.1.1
 
-DEPS = poolboy epgsql erdis ailib
+DEPS = poolboy epgsql eredis ailib
 dep_poolboy_commit = 1.5.2
 dep_epgsql_commit = 4.2.1
 dep_eredis_commit =  v1.2.0
