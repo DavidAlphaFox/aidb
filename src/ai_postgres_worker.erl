@@ -36,9 +36,8 @@ handle_call({connection,Fun},_From,State)->
     {reply,Result,NewState};
 handle_call({transaction,Fun},_From,State)->
     {Result,NewState} = run_transction(Fun,State),
-    {reply,Result,NewState};
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {reply,Result,NewState}.
+
 
 
 %% handle_cast
@@ -100,7 +99,7 @@ connect(#state{conn = Conn}=State) when is_pid(Conn) ->
 connect(#state{conn = undefined, args = Args,keepalive = KeepAlive} = State) ->
     case epgsql:connect(Args) of
         {ok, Conn} -> 
-            Timer = ai_timer:start({keepalive,KeepAlive},timer:seconds(KeepAlive),ai_timer:new()),
+            Timer = ai_timer:start(timer:seconds(KeepAlive),{keepalive,KeepAlive},ai_timer:new()),
             {ok, Conn,State#state{conn = Conn,timer = Timer,last_active = os:timestamp()}};
         {error, Error} ->
             {error, Error}
