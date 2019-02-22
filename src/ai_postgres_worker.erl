@@ -1,6 +1,5 @@
 -module(ai_postgres_worker).
 -behaviour(gen_server).
--behaviour(poolboy_worker).
 
 
 -export([start_link/1]).
