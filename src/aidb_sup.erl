@@ -58,7 +58,28 @@ init([]) ->
     SupFlags = #{strategy => one_for_one,
                  intensity => 5,
                  period => 5},
-    {ok, {SupFlags,[]}}.
+    RedisSup = #{id => ai_redis_pool_sup,
+							 start => {ai_temp_sup, start_link, 
+                         [#{name => {local,ai_redis_pool_sup},
+                           strategy => one_for_one,
+                           intensity => 5,period => 5}
+													]},
+							 restart => transient,
+							 shutdown => 5000,
+							 type => supervisor,
+							 modules => [ai_temp_sup]},
+
+    PostgresSup = #{id => ai_postgres_pool_sup,
+								 start => {ai_temp_sup, start_link, 
+													 [#{name => {local,ai_redis_pool_sup},
+															 strategy => one_for_one,
+															 intensity => 5,period => 5}
+														]},
+								 restart => transient,
+								 shutdown => 5000,
+								 type => supervisor,
+								 modules => [ai_temp_sup]},
+    {ok, {SupFlags,[PostgresSup,RedisSup]}}.
 
 %%%===================================================================
 %%% Internal functions

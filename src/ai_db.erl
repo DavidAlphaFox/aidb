@@ -2,14 +2,12 @@
 
 -export([start_pool/2]).
 
--define(SERVER,aidb_sup).
-
 start_pool(postgres,Args)->
     PoolSpec = postgres(Args),
-    supervisor:start_child(?SERVER,PoolSpec);
+    supervisor:start_child(ai_postgres_pool_sup,PoolSpec);
 start_pool(redis,Args)->
     PoolSpec = redis(Args),
-    supervisor:start_child(?SERVER,PoolSpec).
+    supervisor:start_child(ai_redis_pool_sup,PoolSpec).
 
 redis({Name,Opts})->
     PoolSize = maps:get(pool_size,Opts,5),
