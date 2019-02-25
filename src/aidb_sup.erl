@@ -71,7 +71,7 @@ init([]) ->
 
     PostgresSup = #{id => ai_postgres_pool_sup,
 								 start => {ai_temp_sup, start_link, 
-													 [#{name => {local,ai_redis_pool_sup},
+													 [#{name => {local,ai_postgres_pool_sup},
 															 strategy => one_for_one,
 															 intensity => 5,period => 5}
 														]},
