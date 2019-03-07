@@ -1,6 +1,6 @@
 PROJECT = aidb
 PROJECT_DESCRIPTION = database tools for production from ailink.io
-PROJECT_VERSION = 0.1.6
+PROJECT_VERSION = 0.1.7
 
 DEPS = epgsql eredis ailib
 
