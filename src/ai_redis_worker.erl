@@ -12,7 +12,9 @@
 -record(state, {conn, host, port, 
                 database, password, 
                 reconnect_sleep, 
-                connect_timeout
+                connect_timeout,
+                keepalive,
+                timer,last_active
                }).
 
 
@@ -33,10 +35,12 @@ init(Args) ->
     Password = maps:get(password,Args,""),
     ReconnectSleep = maps:get(reconnect_sleep,Args,100),
     ConnectTimeout = maps:get(connect_timeout,Args,5000),
+    KeepAlive = maps:get(keepalive,Args,3600),
     {ok, #state{conn = undefined,host = Host,port = Port,
                 database = Database,password = Password,
                 reconnect_sleep = ReconnectSleep,
-                connect_timeout = ConnectTimeout }}.
+                connect_timeout = ConnectTimeout,
+               keepalive = KeepAlive}}.
 
 
 
@@ -58,6 +62,20 @@ handle_cast(_Msg, State) ->
 
 handle_info({'EXIT',Conn,_}, #state{conn = Conn}=State) ->
     {noreply, State#state{conn=undefined}};
+handle_info({keepalive,KeepAlive},#state{conn = Conn,timer = Timer,last_active = Active} = State)->
+    Now = os:system_time(second),
+    try 
+        if Now - Active >= KeepAlive ->
+                {ok,<<"PONG">>} = eredis:q(Conn,[<<"PING">>]),
+                State#state{timer = ai_timer:restart(Timer),last_active = Now};
+           true ->
+                State#state{timer = ai_timer:restart(Timer)}
+        end
+    catch
+        _:_ ->
+            eredis:close(Conn),
+            {noreply,State#state{conn = undefined,last_active = undefined,timer = undefined}}
+    end;
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -90,10 +108,13 @@ connect(#state{conn = Conn}=State) when is_pid(Conn) ->
 connect(#state{
            host = Host,port = Port,
            database = Database,password = Password,
-           reconnect_sleep = ReconnectSleep, connect_timeout = ConnectTimeout
+           reconnect_sleep = ReconnectSleep, connect_timeout = ConnectTimeout,
+           keepalive = KeepAlive
           } = State) ->
     case eredis:start_link(Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) of
-        {ok, Conn} -> {ok, Conn,State#state{conn = Conn}};
+        {ok, Conn} -> 
+            Timer = ai_timer:start(timer:seconds(KeepAlive),{keepalive,KeepAlive},ai_timer:new()),
+            {ok, Conn,State#state{conn = Conn,timer = Timer,last_active = os:system_time(second)}};
         {error, Error} -> {error, Error}
     end.
 
@@ -103,11 +124,13 @@ run_connection(Fun,State)->
         {ok,Conn,NewState}-> 
             try
                 R = Fun(Conn),
-                {R,NewState}
+                {R,NewState#state{last_active = os:system_time(second)}}
              catch
                  _Reson:Error -> 
+										 Timer = NewState#state.timer,
+                     ai_timer:cancel(Timer),
                      eredis:stop(Conn),
-                     {{error,Error},NewState#state{conn = undefined}}
+                     {{error,Error},NewState#state{conn = undefined,last_active = undefined,timer = undefined}}
              end;
         {error,Error}-> {{error, Error},State}
     end.

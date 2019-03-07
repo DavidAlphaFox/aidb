@@ -99,7 +99,7 @@ connect(#state{conn = undefined, args = Args,keepalive = KeepAlive} = State) ->
     case epgsql:connect(Args) of
         {ok, Conn} -> 
             Timer = ai_timer:start(timer:seconds(KeepAlive),{keepalive,KeepAlive},ai_timer:new()),
-            {ok, Conn,State#state{conn = Conn,timer = Timer,last_active = os:timestamp()}};
+            {ok, Conn,State#state{conn = Conn,timer = Timer,last_active = os:system_time(second)}};
         {error, Error} ->
             {error, Error}
     end.
