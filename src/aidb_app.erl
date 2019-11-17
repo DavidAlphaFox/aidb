@@ -27,18 +27,15 @@
 %% top supervisor of the tree.
 %% @end
 %%--------------------------------------------------------------------
--spec start(StartType :: normal |
-	{takeover, Node :: node()} |
-	{failover, Node :: node()},
-	StartArgs :: term()) ->
-	{ok, Pid :: pid()} |
-	{ok, Pid :: pid(), State :: term()} |
-	{error, Reason :: term()}.
+-spec start(StartType :: normal | {takeover, Node :: node()} | {failover, Node :: node()},
+            StartArgs :: term()) -> {ok, Pid :: pid()}
+              | {ok, Pid :: pid(), State :: term()}
+              | {error, Reason :: term()}.
 start(_StartType, _StartArgs) ->
-		application:start(crypto),
-		application:start(asn1),
-		application:start(public_key),
-		application:start(ssl),
+    application:start(crypto),
+    application:start(asn1),
+    application:start(public_key),
+    application:start(ssl),
     application:start(epgsql),
     application:start(eredis),
     application:start(ailib),
