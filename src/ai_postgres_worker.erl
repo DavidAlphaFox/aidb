@@ -108,7 +108,7 @@ run_transction(Fun,State)->
     case connect(State) of 
         {ok,Conn,NewState}-> 
             try
-                R = epgsql:with_transaction(Conn,Fun,[{ensure_committed,true},{reraise,true}]),
+                R = epgsql:with_transaction(Conn,Fun,[{ensure_committed,false},{reraise,true}]),
                 {R,NewState#state{last_active = os:system_time(second)}}
             catch
                 _Reson:Error->
