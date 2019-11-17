@@ -100,8 +100,7 @@ connect(#state{conn = undefined, args = Args,keepalive = KeepAlive} = State) ->
         {ok, Conn} -> 
             Timer = ai_timer:start(timer:seconds(KeepAlive),{keepalive,KeepAlive},ai_timer:new()),
             {ok, Conn,State#state{conn = Conn,timer = Timer,last_active = os:system_time(second)}};
-        {error, Error} ->
-            {error, Error}
+        Error -> Error
     end.
 
 
@@ -116,9 +115,9 @@ run_transction(Fun,State)->
                     Timer = NewState#state.timer,
                     ai_timer:cancel(Timer),
                     epgsql:close(Conn),
-                    {{error,Error},NewState#state{conn = undefined,last_active = undefined,timer = undefined}}
+                    {Error,NewState#state{conn = undefined,last_active = undefined,timer = undefined}}
             end;    
-        {error,Error}-> {{error, Error},State}
+        Error-> {Error,State}
     end.
 
 run_connection(Fun,State)->
@@ -132,7 +131,7 @@ run_connection(Fun,State)->
                     Timer = NewState#state.timer,
                     ai_timer:cancel(Timer),
                     epgsql:close(Conn),
-                    {{error,Error},NewState#state{conn = undefined,last_active = undefined,timer = undefined}}
+                    {Error,NewState#state{conn = undefined,last_active = undefined,timer = undefined}}
             end;
-        {error,Error}-> {{error, Error},State}
+        Error -> { Error,State}
     end.
