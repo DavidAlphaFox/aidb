@@ -1,6 +1,7 @@
 -module(ai_postgres_tool).
 -export([rows_to_proplists/2,rows_to_map/2]).
 -export([rows_to_proplists/3,rows_to_map/3]).
+-export([fields_to_select/1,fields_to_select/2]).
 -export([proplists_to_insert/1,proplists_to_insert/2,proplists_to_insert/3]).
 -export([proplists_to_update/1,proplists_to_update/2,proplists_to_update/3]).
 
@@ -51,19 +52,19 @@ row_to_proplists(Cols,Row,MappedCols)->
     {_Index,Map} = lists:foldl(Fun,{1,[]},Cols),
     lists:reverse(Map).
 
-
-white_list(Fields,WhiteList)->
-    lists:foldl(fun(WhiteField,Acc)->
-                        case proplists:get_value(WhiteField,Fields) of
-                            undefined -> Acc;
-                            Value -> [{WhiteField,Value}|Acc]
+fields_to_select(Fields)-> fields_to_select(Fields,undefined).
+fields_to_select(Fields,undefined)->[escape_field(F) || F <- Fields ];
+fields_to_select(Fields,MappedCols)->
+    lists:foldl(fun(F,Acc)->
+                        case proplists:get_value(F,MappedCols) of
+                            undefined -> [escape_field(F)|Acc];
+                            Mapped ->
+                                Field = escape_field(ai_string:to_string(F)),
+                                AsField = escape_field(ai_string:to_string(Mapped)),
+                                [<<$\s,Field/binary," AS ",AsField/binary,$\s>>| Acc]
                         end
-                end,[],WhiteList).
+                end,[],Fields).
 
-reverse_mapped_cols(MappedCols)->
-    lists:foldl(fun({Key,MappedKey},Acc)->
-                        [{MappedKey,Key}|Acc]
-                end,[],MappedCols).
 
 proplists_to_insert(Fields)-> proplists_to_insert(Fields,undefined).
 proplists_to_insert(Fields,MappedCols,undefined)-> proplists_to_insert(Fields,MappedCols);
@@ -136,7 +137,7 @@ escape_field(Field) ->
         F == <<"*">> -> <<$\s,F/binary,$\s>>;
         true->
             F1 = re:replace(F,"\"","\\\"",[global,{return,binary}]),
-            <<" \"",F1/binary,"\" ">>
+            <<"\"",F1/binary,"\"">>
     end.
 %% https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING
 %escape_value(Value)->
@@ -147,3 +148,15 @@ escape_field(Field) ->
 %            F1 = re:replace(F,"'","\\'",[global,{return,binary}]),
 %            <<" E'",F1,"' ">>
 %    end.
+white_list(Fields,WhiteList)->
+    lists:foldl(fun(WhiteField,Acc)->
+                        case proplists:get_value(WhiteField,Fields) of
+                            undefined -> Acc;
+                            Value -> [{WhiteField,Value}|Acc]
+                        end
+                end,[],WhiteList).
+
+reverse_mapped_cols(MappedCols)->
+    lists:foldl(fun({Key,MappedKey},Acc)->
+                        [{MappedKey,Key}|Acc]
+                end,[],MappedCols).
