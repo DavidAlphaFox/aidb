@@ -124,7 +124,7 @@ proplists_to_update(Fields,MappedCols)->
                           Mapped -> escape_field(Mapped)
                       end,
                   Place = <<"$",IndexBin/binary>>,
-                  I = <<"SET "/utf8,Key/binary," = ",Place/binary>>,
+                  I = <<Key/binary," = ",Place/binary>>,
                   {Index + 1, [I|Instr],[FValue|AccValues]}
           end,
     {Index,Keys,Values} =
