@@ -107,7 +107,7 @@ proplists_to_update(Fields,undefined)->
                   IndexBin = ai_string:to_string(Index),
                   Place = <<"$",IndexBin/binary>>,
                   Key = escape_field(FKey),
-                  I = <<"SET "/utf8,Key/binary," = ",Place/binary>>,
+                  I = <<Key/binary," = ",Place/binary>>,
                   {Index + 1, [I|Instr],[FValue|AccValues]}
           end,
     {Index,Keys,Values} =
