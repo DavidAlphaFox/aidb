@@ -14,7 +14,7 @@ rows_to_proplists(Cols,Rows,MappedCols)->
                   [Map|Acc]
           end,
     case Rows of
-        [] -> not_found;
+        [] -> [];
         _ -> lists:foldr(Fun,[],Rows)
     end.
 
@@ -24,7 +24,7 @@ rows_to_map(Cols,Rows,MappedCols)->
                   [maps:from_list(Map)|Acc]
           end,
     case Rows of
-        [] -> not_found;
+        [] -> [];
         _ -> lists:foldr(Fun,[],Rows)
     end.
 
