@@ -153,7 +153,7 @@ start_link(Args) ->
 init(Args) ->
   process_flag(trap_exit, true),
   Handler = map:get(store_handler,Args),
-  HandlerState = Handler:init(Args),
+  {ok,HandlerState} = Handler:init(Args),
   {ok, #state{
           handler = Handler,
           handler_state = HandlerState

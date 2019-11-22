@@ -17,7 +17,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3, format_status/2]).
 
--export([models/0,model/1,store/1]).
+-export([models/0,model/1,store/1,store/2]).
 -export([attrs/1,attr_value/2,attr_value/3]).
 -export([register/3]).
 
@@ -42,7 +42,14 @@ model(ModelName) ->
     end.
 
 store(ModelName) ->
-    lookup_element(ModelName, 2).
+    case lookup_element(ModelName, 2) of
+        M when erlang:is_map(M)->
+            maps:get(primary,M);
+        Store -> Store
+    end.
+store(ModelName,Type)->
+    Store = lookup_element(ModelName, 2),
+    maps:get(Type,Store).
 
 attrs(ModelName) ->
     lookup_element(ModelName, 3).
