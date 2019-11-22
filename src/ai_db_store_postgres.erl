@@ -94,10 +94,24 @@ fetch(ModelName,ID,State)->
     {{ok, []}, NewState}    -> {{error, not_found}, NewState};
     Error          -> Error
   end.
-delete_by(ModelName,ID,State) -> {ok,State}.
-delete_all(ModelName,State) -> {ok, State}.
-find_by(ModelName,Conditions,State) -> {ok,State}.
-find_by(ModelName,Conditions,Limit,Offset,State) -> {ok,State}.
+
+delete_by(ModelName,Conditions,State) ->
+    TableName = escape_field(ModelName),
+    {Values, CleanConditions} = prepare_conditions(Conditions),
+    Clauses = conditions_to_where(CleanConditions),
+    Sql = <<"DELETE FROM ",TableName/binary," WHERE ", Clauses/binary>>,
+    Fun = fun(Conn) -> epgsql:equery(Conn, Sql, Values) end,
+    transaction(Fun,State).
+
+delete_all(ModelName,State) ->
+    TableName = escape_field(ModelName),
+    Sql = <<"DELETE FROM ",TableName/binary>>,
+    Fun = fun(Conn) -> epgsql:equery(Conn, Sql,[]) end,
+    transaction(Fun,State).
+find_by(ModelName,Conditions,State) ->
+    find_by(ModelName,Conditions,[],0,0,State).
+find_by(ModelName,Conditions,Limit,Offset,State) ->
+    find_by(ModelName,Conditions,[],Limit,Offset,State).
 find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
     {Values, CleanConditions} = prepare_conditions(Conditions),
     Clauses = conditions_to_where(CleanConditions),
@@ -145,15 +159,38 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
                      end,
             Models = lists:map(RowFun, Rows),
             {{ok, Models}, NewState};
-    {{error, Error},NewState} -> {{error, Error}, NewState}
+        Error -> Error
   end.
 
 
 
 find_all(ModelName,State) ->  find_all(ModelName, [], 0, 0, State).
 find_all(ModelName,Sort,Limit,Offset,State) ->   find_by(ModelName, [], Sort, Limit, Offset, State).
-count(ModelName,State) -> {ok,State}.
-count_by(ModelName,Conditions,State) -> {ok,State}.
+count(ModelName,State) ->
+    TableName = escape_field(ModelName),
+    Query = <<"SELECT Count(*) FROM ", TableName/binary>>,
+    Fun = fun(Conn) -> epgsql:squery(Conn,Query) end,
+    case dirty(Fun,State) of
+    {{ok, _, [{Count}]},NewState} ->
+      {{ok, erlang:binary_to_integer(Count)}, NewState};
+    Error -> Error
+  end.
+count_by(ModelName, undefined, State) ->
+  count(ModelName, State);
+count_by(ModelName, [], State) ->
+  count(ModelName, State);
+count_by(ModelName,Conditions,State) ->
+    {Values, CleanConditions} = prepare_conditions(Conditions),
+    Clauses = conditions_to_where(CleanConditions),
+    TableName = escape_field(ModelName),
+    Sql = <<"SELECT COUNT(1) FROM ",TableName/binary," WHERE ",Clauses/binary>>,
+    Fun = fun(Conn) -> epgsql:equery(Conn,Sql, Values) end,
+    case dirty(Fun,State) of
+        {{ok, _, [{Count}]},NewState} -> {{ok, Count}, NewState};
+        Error -> Error
+    end.
+
+
 
 dirty(Fun,State)->
     case connect(State) of
@@ -166,7 +203,7 @@ dirty(Fun,State)->
                     catch epgsql:close(Conn),
                     {{error,Reason},NewState#state{conn = undefined}}
             end;
-        Error -> {Error,State}
+        Error -> Error
     end.
 
 transaction(Fun,State) ->
@@ -180,7 +217,7 @@ transaction(Fun,State) ->
                     catch epgsql:close(Conn),
                     {{error,Reason},NewState#state{conn = undefined}}
             end;
-        Error-> {Error,State}
+        Error-> Error
     end.
 
 %%%===================================================================
@@ -204,7 +241,7 @@ connect(#state{conn = Conn} = State) when is_pid(Conn) ->
 connect(#state{conn = undefined, args = Args} = State) ->
     case epgsql:connect(Args) of
         {ok, Conn} -> {ok, Conn,State#state{conn = Conn}};
-        Error -> Error
+        Error -> {Error,State}
     end.
 
 
