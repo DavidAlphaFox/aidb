@@ -152,7 +152,7 @@ start_link(Args) ->
         ignore.
 init(Args) ->
   process_flag(trap_exit, true),
-  Handler = map:get(store_handler,Args),
+  Handler = maps:get(store_handler,Args),
   {ok,HandlerState} = Handler:init(Args),
   {ok, #state{
           handler = Handler,
