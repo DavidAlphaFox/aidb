@@ -317,6 +317,10 @@ conditions_to_where({Name, null}) ->
 conditions_to_where({Name, not_null})->
     N = escape_field(Name),
     <<N/binary," IS NOT NULL ">>;
+conditions_to_where({Name,{'$',_} = Slot}) ->
+    N = escape_field(Name),
+    P = placeholder(Slot),
+    <<N/binary," = ",P/binary>>;
 conditions_to_where({Name,Value}) ->
     N = escape_field(Name),
     V = escape_value(Value),

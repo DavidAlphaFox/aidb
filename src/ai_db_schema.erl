@@ -29,7 +29,7 @@ schema_fields(Schema) ->
   maps:get(fields, Schema, []).
 
 schema(ModelName) ->
-  Module = ai_db_manager:get_attr_value(ModelName, module),
+  Module = ai_db_manager:attr_value(ModelName, module),
   Module:schema().
 
 field_name(#{name := Name}) -> Name.

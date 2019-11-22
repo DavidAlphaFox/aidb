@@ -30,7 +30,7 @@ new_model(Name) ->
     new_model(Name, #{}).
 
 new_model(Name, Fields) ->
-  Module = ai_db_manager:get_attr_value(Name, module),
+  Module = ai_db_manager:attr_value(Name, module),
   #{name => Name, module => Module, fields => Fields}.
 
 wakeup(Model) ->
