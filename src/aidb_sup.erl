@@ -58,6 +58,13 @@ init([]) ->
     SupFlags = #{strategy => one_for_one,
                  intensity => 5,
                  period => 5},
+    DBManager = #{ id => ai_db_manager,
+                   start => {ai_db_manager,start_link,[]},
+                   restart => transient,
+                   shutdown => 5000,
+                   type => worker,
+                   modules => [ai_db_manager]
+                 },
     RedisSup = #{id => ai_redis_pool_sup,
                  start => {ai_temp_sup,
                            start_link,
@@ -81,7 +88,7 @@ init([]) ->
                     shutdown => 5000,
                     type => supervisor,
                     modules => [ai_temp_sup]},
-    {ok, {SupFlags,[PostgresSup,RedisSup]}}.
+    {ok, {SupFlags,[DBManager,PostgresSup,RedisSup]}}.
 
 %%%===================================================================
 %%% Internal functions
