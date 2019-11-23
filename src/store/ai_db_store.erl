@@ -121,7 +121,7 @@ transaction(Name,Fun)->
   ai_pool:transaction(
     Name,
     fun(Worker)->
-        gen_server:call(Worker, {transction, Fun})
+        gen_server:call(Worker, {transaction, Fun})
     end).
 %%--------------------------------------------------------------------
 %% @doc
