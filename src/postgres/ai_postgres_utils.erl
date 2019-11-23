@@ -3,10 +3,17 @@
 -export([escape_operator/1]).
 
 -export([rows_to_proplists/2,rows_to_map/2]).
+-export([rows_to_proplists/3,rows_to_map/3]).
 -include_lib("epgsql/include/epgsql.hrl").
 
+
 rows_to_proplists(Columns,Rows)->
-    ColFun = fun(Col) -> Col#column.name end,
+    rows_to_proplists(Columns,Rows,binary).
+rows_to_map(Columns,Rows)->
+    rows_to_map(Columns,Rows,binary).
+
+rows_to_proplists(Columns,Rows,ColumnType)->
+    ColFun = column(ColumnType),
     ColumnNames = lists:map(ColFun, Columns),
     RowFun =
         fun(Row) ->
@@ -15,8 +22,8 @@ rows_to_proplists(Columns,Rows)->
         end,
     lists:map(RowFun, Rows).
 
-rows_to_map(Columns,Rows)->
-    ColFun = fun(Col) -> Col#column.name end,
+rows_to_map(Columns,Rows,ColumnType)->
+    ColFun = ColFun = column(ColumnType),
     ColumnNames = lists:map(ColFun, Columns),
     RowFun =
         fun(Row) ->
@@ -66,3 +73,13 @@ escape_operator('=<') -> <<"<=">>;
 escape_operator('/=') -> <<"!=">>;
 escape_operator('==') -> <<"=">>;
 escape_operator(Op) -> ai_string:to_string(Op).
+
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+column(atom)->
+    fun(Col) -> erlang:binary_to_atom(Col#column.name, utf8) end;
+column(_) ->
+    fun(Col) -> Col#column.name end.
