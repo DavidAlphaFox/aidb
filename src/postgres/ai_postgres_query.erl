@@ -109,7 +109,7 @@ select(Table, SelectFields,Conditions, ExtraWhere,
 form_select_query(SelectFields, Conditions, ExtraWhere) ->
     {Values, CleanConditions} = ai_postgres_clause:prepare_conditions(Conditions),
     WhereTmp = ai_postgres_clause:where_clause(CleanConditions),
-    SFields = [ai_postres_utils:escape_field(F) || F <- SelectFields],
+    SFields = [ai_postgres_utils:escape_field(F) || F <- SelectFields],
     Where =
         case ExtraWhere of
             undefined -> WhereTmp;
