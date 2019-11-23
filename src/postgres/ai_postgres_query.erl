@@ -22,7 +22,7 @@ update(Table,Proplist,Conditions)->
                             Slot = <<FieldName/binary, " = $", IndexBin/binary>>,
                             {Index+1,[Slot|Fs],[V|Vs]}
                     end, {erlang:length(Values) + 1,[], []}, Proplist),
-    UpdateSlotsCSV = string:join(UFields, <<",">>),
+    UpdateSlotsCSV = ai_string:join(UFields, <<",">>),
     WhereClause =
         case erlang:byte_size(Where) of
             0 -> <<>>;
@@ -42,7 +42,7 @@ insert(Table,IDField, Proplist) ->
     SlotsFun = fun(N) -> NBin = erlang:integer_to_binary(N), <<"$",NBin/binary>>  end,
     InsertSlots = lists:map(SlotsFun, lists:seq(1, erlang:length(Values))),
     FieldsCSV = ai_string:join(Fields, <<" , ">>),
-    InsertSlotsCSV = string:join(InsertSlots, <<" , ">>),
+    InsertSlotsCSV = ai_string:join(InsertSlots, <<" , ">>),
     InsertSql = <<"INSERT INTO ", TableName/binary," ( ", FieldsCSV/binary, " ) ",
                               " VALUES "," ( ", InsertSlotsCSV/binary, " ) ",
                               "RETURNING ", IDFieldBin/binary>>,
