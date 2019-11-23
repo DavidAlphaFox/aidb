@@ -3,7 +3,7 @@
 -export([count/1,count/2,count/3]).
 -export([insert/3,update/3,delete/2]).
 delete(Table, Conditions) ->
-    TableName = ai_postgres_utils:escape_filed(Table),
+    TableName = ai_postgres_utils:escape_field(Table),
     {_Select, Where, Values} = form_select_query([], Conditions,undefined),
     WhereClause =
         case erlang:byte_size(Where) of
@@ -13,7 +13,7 @@ delete(Table, Conditions) ->
     Sql = <<"DELETE FROM ",TableName/binary,WhereClause/binary>>,
     {Sql,Values}.
 update(Table,Proplist,Conditions)->
-    TableName = ai_postgres_utils:escape_filed(Table),
+    TableName = ai_postgres_utils:escape_field(Table),
     {_Select, Where, Values} = form_select_query([], Conditions, undefined),
     {_,UFields, UValues} =
         lists:foldr(fun({K, V}, {Index,Fs, Vs}) ->
@@ -33,7 +33,7 @@ update(Table,Proplist,Conditions)->
 
 insert(Table,IDField, Proplist) ->
     IDFieldBin = ai_postgres_utils:escape_field(IDField),
-    TableName = ai_postgres_utils:escape_filed(Table),
+    TableName = ai_postgres_utils:escape_field(Table),
     {Fields, Values} =
         lists:foldr(fun({K, V}, {Fs, Vs}) ->
                             {[ai_postgres_utils:escape_field(K)|Fs], [V|Vs]}
