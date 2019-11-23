@@ -76,9 +76,13 @@ select(Table, SelectFields,Conditions, ExtraWhere,
         case OrderBy of
             undefined -> <<>>;
             [] -> <<>>;
-            OrderBy when erlang:is_binary(OrderBy)-> OrderBy;
+            OrderBy when erlang:is_binary(OrderBy)-> <<" ORDER BY ",OrderBy/binary>>;
             OrderBy when erlang:is_list(OrderBy)  ->
-                ai_postgres_clause:order_by_clause(OrderBy)
+                OrderByBin = ai_postgres_clause:order_by_clause(OrderBy),
+                case erlang:byte_size(OrderByBin) of
+                    0 -> <<>>;
+                    _ -> <<" ORDER BY ",OrderByBin/binary>>
+                end
         end,
     WhereClause =
         case erlang:byte_size(Where) of

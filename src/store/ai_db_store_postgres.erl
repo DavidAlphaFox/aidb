@@ -118,9 +118,15 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
     TableName = ai_postgres_utils:escape_field(ModelName),
     OrderByClause =
         case Sort of
-            [] -> <<>>;
             undefined -> <<>>;
-            _  -> ai_postgres_clause:order_by_clause(Sort)
+            [] -> <<>>;
+            Sort when erlang:is_binary(Sort)-> <<" ORDER BY ",Sort/binary>>;
+            Sort when erlang:is_list(Sort)  ->
+                OrderByBin = ai_postgres_clause:order_by_clause(Sort),
+                case erlang:byte_size(OrderByBin) of
+                    0 -> <<>>;
+                    _ -> <<" ORDER BY ",OrderByBin/binary>>
+                end
         end,
     WhereClause =
         case erlang:byte_size(Clauses) of

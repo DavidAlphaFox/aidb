@@ -91,5 +91,4 @@ order_by_clause(SortFields) ->
                         <<NameBin/binary," ",OrderBin/binary>>
                 end,
     Clauses = lists:map(ClauseFun, SortFields),
-    ClauseBin = ai_string:join(Clauses,<<",">>),
-    <<" ORDER BY ", ClauseBin/binary>>.
+    ai_string:join(Clauses,<<",">>).
