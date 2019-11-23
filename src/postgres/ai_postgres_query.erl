@@ -1,7 +1,52 @@
 -module(ai_postgres_query).
 -export([select/3,select/4,select/6,select/7]).
 -export([count/1,count/2,count/3]).
+-export([insert/3,update/3,delete/2]).
+delete(Table, Conditions) ->
+    TableName = ai_postgres_utils:escape_filed(Table),
+    {_Select, Where, Values} = form_select_query([], Conditions,undefined),
+    WhereClause =
+        case erlang:byte_size(Where) of
+            0 -> <<>>;
+            _ -> <<" WHERE ", Where/binary>>
+        end,
+    Sql = <<"DELETE FROM ",TableName/binary,WhereClause/binary>>,
+    {Sql,Values}.
+update(Table,Proplist,Conditions)->
+    TableName = ai_postgres_utils:escape_filed(Table),
+    {_Select, Where, Values} = form_select_query([], Conditions, undefined),
+    {_,UFields, UValues} =
+        lists:foldr(fun({K, V}, {Index,Fs, Vs}) ->
+                            IndexBin = erlang:integer_to_binary(Index),
+                            FieldName = ai_postgres_utils:escape_field(K),
+                            Slot = <<FieldName/binary, " = $", IndexBin/binary>>,
+                            {Index+1,[Slot|Fs],[V|Vs]}
+                    end, {erlang:length(Values) + 1,[], []}, Proplist),
+    UpdateSlotsCSV = string:join(UFields, <<",">>),
+    WhereClause =
+        case erlang:byte_size(Where) of
+            0 -> <<>>;
+            _ -> <<" WHERE ", Where/binary>>
+        end,
+    UpdateSql = <<"UPDATE ", TableName/binary," SET ",UpdateSlotsCSV/binary,WhereClause/binary>>,
+    {UpdateSql,Values ++ UValues}.
 
+insert(Table,IDField, Proplist) ->
+    IDFieldBin = ai_postgres_utils:escape_field(IDField),
+    TableName = ai_postgres_utils:escape_filed(Table),
+    {Fields, Values} =
+        lists:foldr(fun({K, V}, {Fs, Vs}) ->
+                            {[ai_postgres_utils:escape_field(K)|Fs], [V|Vs]}
+                    end, {[], []}, Proplist),
+
+    SlotsFun = fun(N) -> NBin = erlang:integer_to_binary(N), <<"$",NBin/binary>>  end,
+    InsertSlots = lists:map(SlotsFun, lists:seq(1, erlang:length(Values))),
+    FieldsCSV = ai_string:join(Fields, <<" , ">>),
+    InsertSlotsCSV = string:join(InsertSlots, <<" , ">>),
+    InsertSql = <<"INSERT INTO ", TableName/binary," ( ", FieldsCSV/binary, " ) ",
+                              " VALUES "," ( ", InsertSlotsCSV/binary, " ) ",
+                              "RETURNING ", IDFieldBin/binary>>,
+    {InsertSql,Values}.
 count(Table) -> count(Table,[],undefined).
 count(Table,Conditions) -> count(Table,Conditions,undefined).
 count(Table, Conditions, ExtraWhere) ->

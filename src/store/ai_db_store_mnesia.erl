@@ -35,7 +35,7 @@ persist(Model, State) ->
   Id = ai_db_model:get_field(IdField, Model),
   NewId =
     case Id of
-      undefined -> new_id(ModelName, sumo_internal:id_field_type(ModelName));
+      undefined -> new_id(ModelName, ai_db_schema:id_type(ModelName));
       Id        -> Id
     end,
   Model2 = transform_sleep(Model),

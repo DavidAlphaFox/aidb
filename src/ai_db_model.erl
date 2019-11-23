@@ -39,7 +39,7 @@ wakeup(Model) ->
   Module:wakup(Fields).
 
 sleep(Name,Model)->
-  Module = ai_db_manager:get_attr_value(Name,module),
+  Module = ai_db_manager:attr_value(Name,module),
   Fields = Module:sleep(Model),
   #{name => Name, module => Module, fields => Fields}.
 
