@@ -52,7 +52,7 @@ persist(Model,State)->
                 NPColumnsNamesCSV = ai_string:join(NPColumnNames, <<",">>),
                 SlotsFun = fun(N) -> NBin = erlang:integer_to_binary(N), <<"$",NBin/binary>>  end,
                 InsertSlots = lists:map(SlotsFun, lists:seq(1, erlang:length(NPFieldNames))),
-                InsertSlotsCSV = string:join(InsertSlots, <<", ">>),
+                InsertSlotsCSV = ai_string:join(InsertSlots, <<", ">>),
                 InsertSql = <<"INSERT INTO ", TableName/binary," ( ", NPColumnsNamesCSV/binary, " ) ",
                               " VALUES "," ( ", InsertSlotsCSV/binary, " ) ",
                               "RETURNING ", IDFieldBin/binary>>,
@@ -64,7 +64,7 @@ persist(Model,State)->
                                     {N + 1, [Slot | Slots]}
                             end,
                 {IDIndex, UpdateSlots} = lists:foldl(UpdateFun, {1, []}, NPColumnNames),
-                UpdateSlotsCSV = string:join(UpdateSlots, <<",">>),
+                UpdateSlotsCSV = ai_string:join(UpdateSlots, <<",">>),
                 IDIndexBin = erlang:integer_to_binary(IDIndex),
                 IDSlot = <<"$",IDIndexBin/binary>>,
                 UpdateSql = <<"UPDATE ", TableName/binary," SET ",UpdateSlotsCSV/binary,
