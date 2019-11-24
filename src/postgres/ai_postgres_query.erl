@@ -29,7 +29,7 @@ update(Table,Proplist,Conditions)->
             _ -> <<" WHERE ", Where/binary>>
         end,
     UpdateSql = <<"UPDATE ", TableName/binary," SET ",UpdateSlotsCSV/binary,WhereClause/binary>>,
-    {UpdateSql,Values ++ UValues}.
+    {UpdateSql,Values ++ lists:reverse(UValues)}.
 
 insert(Table,IDField, Proplist) ->
     IDFieldBin = ai_postgres_utils:escape_field(IDField),
