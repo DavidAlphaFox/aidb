@@ -8,7 +8,6 @@
          get_field/2,
          set_field/3
         ]).
--export([wakeup/1,sleep/2]).
 
 model_name(Model) ->
     maps:get(name, Model, undefined).
@@ -32,14 +31,3 @@ new_model(Name) ->
 new_model(Name, Fields) ->
   Module = ai_db_manager:attr_value(Name, module),
   #{name => Name, module => Module, fields => Fields}.
-
-wakeup(Model) ->
-  Module = model_name(Model),
-  Fields = model_fields(Model),
-  Module:wakup(Fields).
-
-sleep(Name,Model)->
-  Module = ai_db_manager:attr_value(Name,module),
-  Fields = Module:sleep(Model),
-  #{name => Name, module => Module, fields => Fields}.
-
