@@ -35,7 +35,7 @@ new_model(Name, Fields) ->
 wakeup(Model) ->
   Module = model_module(Model),
   Fields = model_fields(Model),
-  Module:wakup(Fields).
+  Module:wakeup(Fields).
 
 sleep(Name,Model)->
   Module = ai_db_manager:attr_value(Name,module),
