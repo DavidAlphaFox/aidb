@@ -186,12 +186,8 @@ wakeup(_, _, FieldValue, _) -> FieldValue.
 
 result_to_model(Result, Fields) ->
   [ModelName | Values] = erlang:tuple_to_list(Result),
-  NewModel = ai_db_model:new_model(ModelName),
-  Pairs = lists:zip(Fields, Values),
-  lists:foldl(fun({Name, Value}, Model) ->
-                  ai_db_model:set_field(Name, Value, Model)
-              end, NewModel, Pairs).
-
+  Pairs = maps:from_list(lists:zip(Fields, Values)),
+  ai_db_model:new_model(ModelName,Pairs).
 
 transform_conditions(ModelName, Conditions) ->
   ai_db_transform:conditions(fun validate_date/1, ModelName, Conditions, [date]).
