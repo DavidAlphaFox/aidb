@@ -33,7 +33,7 @@ new_model(Name, Fields) ->
   #{name => Name, module => Module, fields => Fields}.
 
 wakeup(Model) ->
-  Module = model_name(Model),
+  Module = model_module(Model),
   Fields = model_fields(Model),
   Module:wakup(Fields).
 
