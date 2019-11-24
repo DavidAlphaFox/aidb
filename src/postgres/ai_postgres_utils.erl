@@ -49,7 +49,7 @@ escape_field({'as',Field,ASField})->
     <<F/binary," AS ",AF/binary>>;
 escape_field({Prefix,Column})->
     PrefixBin = ai_string:to_string(Prefix),
-    ColumnBin = ai_string:to_string(Column),
+    ColumnBin = escape_field(Column),
     <<PrefixBin/binary,".",ColumnBin/binary>>;
 escape_field(Field) ->
     F = ai_string:to_string(Field),
