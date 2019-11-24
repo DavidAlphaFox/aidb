@@ -1,7 +1,7 @@
 -module(ai_db).
 
 -export([start_pool/2]).
-
+-export([register_model/3]).
 -export([fetch/2, persist/2]).
 -export([find_one/2,find_all/1,find_by/4,find_by/5]).
 -export([delete_all/1,delete/2,delete_by/2]).
@@ -14,6 +14,8 @@ start_pool(store, Args) ->
     PoolSpec = store(Args),
     supervisor:start_child(ai_store_pool_sup, PoolSpec).
 
+register_model(ModelName,ModelStore,ModelAttrs)->
+  ai_db_manager:register(ModelName,ModelStore,ModelAttrs).
 
 persist(ModelName, UserModel) ->
     Model = ai_db_model:sleep(ModelName, UserModel),
