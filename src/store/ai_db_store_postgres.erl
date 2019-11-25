@@ -41,10 +41,11 @@ persist(Model,State)->
                    {ai_db_schema:field_name(F), ai_db_schema:field_type(F),ai_db_schema:field_attrs(F)}
                    || F <- SchemaFields
                   ],
-    NPColumnValues = lists:map(fun (N) ->
-                                       {N, _T, _A} = lists:keyfind(N, 1, ColumnTypes),
-                                       maps:get(N, Fields)
-                               end, NPFieldNames),
+    NPColumnValues = lists:map(
+                       fun (N) ->
+                               {N, _T, _A} = lists:keyfind(N, 1, ColumnTypes),
+                               maps:get(N, Fields)
+                       end, NPFieldNames),
     IDFieldBin = ai_postgres_utils:escape_field(IDField),
     {Sql, Values} =
         case ID of
@@ -232,7 +233,7 @@ transaction(Fun,State) ->
 
 alive(Conn) ->
     try
-        {ok,_} = epgsql:squery(Conn,"SELECT 1 "),
+        {ok,_Col,_Row} = epgsql:squery(Conn,"SELECT 1 "),
         true
     catch
         _:_-> false
