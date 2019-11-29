@@ -3,7 +3,8 @@
 -export([start_pool/2]).
 -export([register_model/3]).
 -export([fetch/2, persist/2]).
--export([find_one/2,find_all/1,find_by/4,find_by/5]).
+-export([find_one/2,find_all/1,find_all/4,
+         find_by/2,find_by/4,find_by/5]).
 -export([delete_all/1,delete/2,delete_by/2]).
 -export([count/1,count_by/2]).
 
@@ -38,6 +39,17 @@ find_one(ModelName, Conditions) ->
   end.
 find_all(ModelName) ->
   case ai_db_store:find_all(ai_db_manager:store(ModelName), ModelName) of
+    {ok, Models} -> models_wakeup(Models);
+    Error      -> exit(Error)
+  end.
+find_all(ModelName, SortFields, Limit, Offset) ->
+  case ai_db_store:find_all(ai_db_manager:store(ModelName),ModelName,SortFields,Limit,Offset) of
+    {ok,Models} -> models_wakeup(Models);
+    Error -> exit(Error)
+  end.
+find_by(ModelName,Conditions)->
+  Store = ai_db_manager:store(ModelName),
+  case ai_db_store:find_by(Store, ModelName, Conditions) of
     {ok, Models} -> models_wakeup(Models);
     Error      -> exit(Error)
   end.
