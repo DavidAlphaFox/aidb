@@ -29,8 +29,7 @@ rows_to_map(Columns,Rows,ColumnType)->
         fun(Row) ->
                 Fields = erlang:tuple_to_list(Row),
                 Pairs = lists:zip(ColumnNames, Fields),
-                maps:from_lists(Pairs)
-
+                maps:from_list(Pairs)
         end,
     lists:map(RowFun, Rows).
 
