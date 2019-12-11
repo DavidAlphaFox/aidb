@@ -33,7 +33,7 @@ schema_as(Schema)->
         Attrs = field_attrs(F),
         case lists:keyfind(as,1,Attrs) of
           false -> [Key|Acc];
-          {as,ASKey} -> [{as,Key,ASKey}|Attrs]
+          {as,ASKey} -> [{as,Key,ASKey}|Acc]
         end
     end,[],Fields).
 
