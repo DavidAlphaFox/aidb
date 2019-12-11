@@ -9,7 +9,7 @@
          set_field/3
         ]).
 -export([wakeup/1,sleep/2]).
--export([build_model/2,build_model/3]).
+-export([build_fields/2,build_fields/3]).
 -compile({inline,[
                   build_field_key/2,
                   build_fields/4,
@@ -17,16 +17,16 @@
                  ]}).
 
 
-build_model(Name,Input)->
-  AttrsMap = schema_attrs(Name),
+build_fields(Schema,Input)->
+  AttrsMap = schema_attrs(Schema),
   lists:foldl(
     fun({Key,Attrs},Acc)->
         KeyBin = build_field_key(Key,Attrs),
         build_fields(Key,KeyBin,Input,Acc)
   end,#{},AttrsMap).
 
-build_model(Name,Emnu,Input)->
-  AttrsMap = schema_attrs(Name),
+build_fields(Schema,Emnu,Input)->
+  AttrsMap = schema_attrs(Schema),
   lists:foldl(
     fun({Key,Attrs},Acc)->
       case lists:member(Key,Emnu) of
