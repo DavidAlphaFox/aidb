@@ -30,7 +30,7 @@ fetch(ModelName, Id) ->
     Store = ai_db_manager:store(ModelName),
     case ai_db_store:fetch(Store, ModelName, Id) of
       {ok, Model} -> ai_db_model:wakeup(Model);
-      {error, Reason} -> Reason
+      Error -> Error
     end.
 find_one(ModelName, Conditions) ->
   case find_by(ModelName, Conditions, 1, 0) of
