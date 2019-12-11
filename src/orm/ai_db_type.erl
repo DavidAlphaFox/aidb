@@ -13,14 +13,10 @@ is_datetime({{_, _, _} = Date, {H, M, S}}) ->
 is_datetime(_) -> false.
 
 cast(_, undefined) -> {ok, undefined};
-cast(Type, Data)
-  when is_binary(Data) andalso
-    (Type == integer orelse Type == float) ->
-    cast(Type, erlang:binary_to_list(Data));
 cast(float, Data) when is_integer(Data) -> {ok, Data + 0.0};
-cast(float, Data) when is_list(Data) -> cast_float(Data);
+cast(float, Data) when is_list(Data) orelse is_binary(Data) -> cast_float(Data);
 cast(integer, Data) when is_float(Data) -> {ok, erlang:trunc(Data)};
-cast(integer, Data) when is_list(Data) -> cast_integer(Data);
+cast(integer, Data) when is_list(Data) orelse is_binary(Data) -> cast_integer(Data);
 cast(Type, Data)
   when is_list(Data), Type /= binary, Type /= custom ->
     cast(Type, ai_string:to_string(Data));
@@ -41,7 +37,7 @@ cast(date, {_, _, _} = Data) -> cast(datetime, {Data, {0, 0, 0}});
 cast(Type, Data)
     when erlang:is_binary(Data) andalso
 	   (Type == date orelse Type == datetime) ->
-    try {ok, iso8601:parse(Data)} catch
+    try {ok, ai_iso8601:parse(Data)} catch
       _:_ -> {error, {invalid, Data}}
     end;
 cast(Type, Data) ->
@@ -55,7 +51,7 @@ cast(Type, Data) ->
 %%% Internal functions
 %%%=============================================================================
 
-%% @private
+
 primitives() ->
   #{
     string => fun erlang:is_binary/1,

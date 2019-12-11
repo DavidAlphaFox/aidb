@@ -43,8 +43,7 @@ model(ModelName) ->
 
 store(ModelName) ->
     case lookup_element(ModelName, 2) of
-        M when erlang:is_map(M)->
-            maps:get(primary,M);
+        M when erlang:is_map(M)-> maps:get(primary,M);
         Store -> Store
     end.
 store(ModelName,Type)->
