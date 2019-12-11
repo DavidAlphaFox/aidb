@@ -25,7 +25,8 @@ init(Args) -> {ok,#state{conn = undefined, args=Args}}.
 
 persist(Model,State)->
     ModelName = ai_db_model:model_name(Model),
-    IDField = ai_db_schema:id_name(ModelName),
+    Schema = ai_db_schema:schema(ModelName),
+    IDField = ai_db_schema:id_name(Schema),
     ID = ai_db_model:get_field(IDField,Model),
 
     TableName = ai_postgres_utils:escape_field(ModelName),
@@ -35,7 +36,6 @@ persist(Model,State)->
     NPFieldNames = maps:keys(NPFields),
     NPColumnNames = lists:map(fun ai_postgres_utils:escape_field/1, NPFieldNames),
 
-    Schema = ai_db_schema:schema(ModelName),
     SchemaFields = ai_db_schema:schema_fields(Schema),
     ColumnTypes = [
                    {ai_db_schema:field_name(F), ai_db_schema:field_type(F),ai_db_schema:field_attrs(F)}
@@ -89,12 +89,13 @@ persist(Model,State)->
         {Error, NewState} -> {Error, NewState}
   end.
 fetch(ModelName,ID,State)->
-    IdFieldName = ai_db_schema:id_name(ModelName),
-  case find_by(ModelName, [{IdFieldName, ID}], [], 1, 0, State) of
-    {{ok, [Model]},NewState} -> {{ok,Model}, NewState};
-    {{ok, []}, NewState}    -> {{error, not_found}, NewState};
-    Error          -> Error
-  end.
+    Schema = ai_db_schema:schema(ModelName),
+    IDFieldName = ai_db_schema:id_name(Schema),
+    case find_by(ModelName, [{IDFieldName, ID}], [], 1, 0, State) of
+        {{ok, [Model]},NewState} -> {{ok,Model}, NewState};
+        {{ok, []}, NewState}    -> {{error, not_found}, NewState};
+        Error          -> Error
+    end.
 
 delete_by(ModelName,Conditions,State) ->
     TableName = ai_postgres_utils:escape_field(ModelName),
@@ -117,6 +118,10 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
     {Values, CleanConditions} = ai_postgres_clause:prepare_conditions(Conditions),
     Clauses = ai_postgres_clause:where_clause(CleanConditions),
     TableName = ai_postgres_utils:escape_field(ModelName),
+    Schema = ai_db_schema:schema(ModelName),
+    SchemaAs = ai_db_schema:schema_as(Schema),
+    NPColumnNames = lists:map(fun ai_postgres_utils:escape_field/1, SchemaAs),
+    NPColumnsNamesCSV = ai_string:join(NPColumnNames, <<",">>),
     OrderByClause =
         case Sort of
             undefined -> <<>>;
@@ -134,8 +139,10 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
             0 -> <<>>;
             _ -> <<" WHERE ", Clauses/binary>>
         end,
-    Sql1 = <<"SELECT * FROM ", TableName/binary,
-             WhereClause/binary,OrderByClause/binary>>,
+    Sql1 =
+        <<"SELECT ",NPColumnsNamesCSV/binary," FROM ", TableName/binary,
+          WhereClause/binary,OrderByClause/binary>>,
+
     Sql2 =
         case Limit of
             0 -> Sql1;

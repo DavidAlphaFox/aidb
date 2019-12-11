@@ -29,11 +29,11 @@ schema_as(Schema)->
   Fields = maps:get(fields, Schema, []),
   lists:foldl(
     fun(F,Acc)->
-        Key = ai_db_model:field_name(F),
-        Attrs = ai_db_model:field_attrs(F),
+        Key = field_name(F),
+        Attrs = field_attrs(F),
         case lists:keyfield(as,1,Attrs) of
-          false -> Acc;
-          {as,ASKey} -> [{Key,ASKey}|Attrs]
+          false -> [Key|Acc];
+          {as,ASKey} -> [{as,Key,ASKey}|Attrs]
         end
     end,[],Fields).
 
@@ -47,8 +47,8 @@ field_attrs(_Field = #{attrs := Attributes}) -> Attributes.
 field_is(What, #{attrs := Attributes}) ->
     proplists:is_defined(What, Attributes).
 
-id_name(ModelName) -> field_name(id_field(schema(ModelName))).
-id_type(ModelName) -> field_type(id_field(schema(ModelName))).
+id_name(Schema) -> field_name(id_field(Schema)).
+id_type(Schema) -> field_type(id_field(Schema)).
 
 %%%===================================================================
 %%% Internal functions

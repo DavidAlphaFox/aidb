@@ -17,37 +17,38 @@ init(Options) ->
 
 persist(Model, State) ->
     ModelName = ai_db_model:model_name(Model),
-    IdField = ai_db_schema:id_name(ModelName),
-    Id = ai_db_model:get_field(IdField, Model),
-    NewId = case Id of
-	      undefined ->
-		  new_id(ModelName, ai_db_schema:id_type(ModelName));
-	      Id -> Id
+    Schema = ai_db_schema:schema(ModelName),
+    IDField = ai_db_schema:id_name(Schema),
+    ID = ai_db_model:get_field(IDField, Model),
+    NewID =
+        case ID of
+            undefined ->
+                new_id(ModelName, ai_db_schema:id_type(Schema));
+            ID -> ID
 	    end,
     Model2 = ai_db_transform:model(fun sleep/4, Model),
     Fields = ai_db_model:model_fields(Model2),
-    Schema = ai_db_schema:schema(ModelName),
-    [IdField | NPFields] = schema_field_names(Schema),
+
+    [IDField | NPFields] = schema_field_names(Schema),
     NPValues = [maps:get(K, Fields, undefined)
 		|| K <- NPFields],
-    MnesiaRecord = list_to_tuple([ModelName, NewId
-				  | NPValues]),
-    case mnesia:transaction(fun () ->
-				    mnesia:write(MnesiaRecord)
-			    end)
+    MnesiaRecord = list_to_tuple([ModelName, NewID | NPValues]),
+    case mnesia:transaction(
+           fun () -> mnesia:write(MnesiaRecord) end
+          )
 	of
-      {aborted, Reason} -> {{error, Reason}, State};
-      {atomic, ok} ->
-	  NewModel = ai_db_model:set_field(IdField, NewId, Model),
-	  _ = maybe_log(persist, [ModelName, NewModel], State),
-	  {{ok, NewModel}, State}
+        {aborted, Reason} -> {{error, Reason}, State};
+        {atomic, ok} ->
+            NewModel = ai_db_model:set_field(IDField, NewID, Model),
+            _ = maybe_log(persist, [ModelName, NewModel], State),
+            {{ok, NewModel}, State}
     end.
 
 fetch(ModelName, ID, State) ->
     try [Result] = mnesia:dirty_read(ModelName, ID),
-	Schema = ai_db_schema:schema(ModelName),
-	Fields = schema_field_names(Schema),
-	_ = maybe_log(fetch, [ModelName, ID], State),
+         Schema = ai_db_schema:schema(ModelName),
+         Fields = schema_field_names(Schema),
+         _ = maybe_log(fetch, [ModelName, ID], State),
 	{{ok,
 	  ai_db_transform:model(fun wakeup/4,
 				result_to_model(Result, Fields))},
