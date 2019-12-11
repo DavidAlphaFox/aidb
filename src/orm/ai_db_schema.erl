@@ -31,7 +31,7 @@ schema_as(Schema)->
     fun(F,Acc)->
         Key = field_name(F),
         Attrs = field_attrs(F),
-        case lists:keyfield(as,1,Attrs) of
+        case lists:keyfind(as,1,Attrs) of
           false -> [Key|Acc];
           {as,ASKey} -> [{as,Key,ASKey}|Attrs]
         end
