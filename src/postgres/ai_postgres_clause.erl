@@ -18,16 +18,20 @@ prepare_conditions({LogicalOp, Exprs}, {Values, CleanExprs, Count})
     {NewValues,
         [{LogicalOp, lists:reverse(NewCleanExprs)} | CleanExprs],
     NewCount};
-prepare_conditions({ Op,Name, Value}, {Values, CleanExprs, Count})
-  when (not is_atom(Value)) andalso (not is_tuple(Value))->
+%% 仅当是tuple的时候才是两个field操作
+prepare_conditions({Op,Name1, {field,_} = Name2}, {Values, CleanExprs, Count}) ->
+    {Values,
+     [{Op,Name1, Name2} | CleanExprs],
+     Count};
+prepare_conditions({ Op,Name, Value}, {Values, CleanExprs, Count}) ->
     {[Value | Values],
      [{Op,Name, {'$', Count}} | CleanExprs],
     Count + 1};
-prepare_conditions({Op,Name1, Name2}, {Values, CleanExprs, Count})
-  when is_atom(Name2) orelse is_tuple(Name2) ->
+%% 直接相等操作
+prepare_conditions({Name1, {field,_} = Name2}, {Values, CleanExprs, Count}) ->
     {Values,
-     [{Op,Name1, Name2} | CleanExprs],
-    Count};
+     [{Name1, Name2} | CleanExprs],
+     Count};
 prepare_conditions({Name, Value}, {Values, CleanExprs, Count})
   when Value =/= 'null' andalso Value =/= 'not_null' ->
     {[Value | Values],
@@ -63,11 +67,6 @@ where_clause({Op,Name1, {field,Name2}}) ->
     N1 = ai_postgres_utils:escape_field(Name1),
     N2 = ai_postgres_utils:escape_field(Name2),
     O = ai_postgres_utils:escape_operator(Op),
-    <<N1/binary,O/binary,N2>>;
-where_clause({Op,Name1,Name2}) ->
-    N1 = ai_postgres_utils:escape_field(Name1),
-    N2 = ai_postgres_utils:escape_field(Name2),
-    O = ai_postgres_utils:escape_operator(Op),
     <<N1/binary,O/binary,N2/binary>>;
 where_clause({Name, null}) ->
     N = ai_postgres_utils:escape_field(Name),
@@ -75,6 +74,10 @@ where_clause({Name, null}) ->
 where_clause({Name, not_null})->
     N = ai_postgres_utils:escape_field(Name),
     <<N/binary," IS NOT NULL ">>;
+where_clause({Name1, {field,Name2}}) ->
+    N1 = ai_postgres_utils:escape_field(Name1),
+    N2 = ai_postgres_utils:escape_field(Name2),
+    <<N1/binary," = ",N2/binary>>;
 where_clause({Name,{'$',_} = Slot}) ->
     N = ai_postgres_utils:escape_field(Name),
     P = ai_postgres_utils:slot_numbered(Slot),
