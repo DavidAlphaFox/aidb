@@ -1,6 +1,6 @@
 -module(ai_db).
 
--export([start_pool/2]).
+-export([start_pool/1]).
 -export([register_model/3]).
 -export([fetch/2, persist/2]).
 -export([find_one/2,find_all/1,find_all/4,
@@ -8,12 +8,9 @@
 -export([delete_all/1,delete/2,delete_by/2]).
 -export([count/1,count_by/2]).
 
-start_pool(redis, Args) ->
-    PoolSpec = redis(Args),
-    supervisor:start_child(ai_redis_pool_sup, PoolSpec);
-start_pool(store, Args) ->
-    PoolSpec = store(Args),
-    supervisor:start_child(ai_store_pool_sup, PoolSpec).
+start_pool(Args) ->
+  PoolSpec = store(Args),
+  supervisor:start_child(ai_db_pool_sup, PoolSpec).
 
 register_model(ModelName,ModelStore,ModelAttrs)->
   ai_db_manager:register(ModelName,ModelStore,ModelAttrs).
@@ -105,21 +102,13 @@ count_by(ModelName, Conditions) ->
 %%% Internal functions
 %%%=============================================================================
 
-redis({Name, Opts}) ->
-    PoolSize = maps:get(pool_size, Opts, 5),
-    MaxOverflow = maps:get(max_overflow, Opts, 0),
-    PoolBoyOpts = [{name, {local, Name}}, {size, PoolSize},
-		   {max_overflow, MaxOverflow},
-		   {worker_module, ai_redis_worker}],
-    ai_pool:pool_spec(Name, PoolBoyOpts, Opts).
-
 store({Name, Opts}) ->
-    PoolSize = maps:get(pool_size, Opts, 5),
-    MaxOverflow = maps:get(max_overflow, Opts, 0),
-    PoolBoyOpts = [{name, {local, Name}}, {size, PoolSize},
-		   {max_overflow, MaxOverflow},
-		   {worker_module, ai_db_store}],
-    ai_pool:pool_spec(Name, PoolBoyOpts, Opts).
+  PoolSize = maps:get(pool_size, Opts, 5),
+  MaxOverflow = maps:get(max_overflow, Opts, 0),
+  PoolBoyOpts = [{name, {local, Name}}, {size, PoolSize},
+                 {max_overflow, MaxOverflow},
+                 {worker_module, ai_db_store}],
+  ai_pool:pool_spec(Name, PoolBoyOpts, Opts).
 
 models_wakeup(Models) ->
   lists:map(fun(Model) -> ai_db_model:wakeup(Model) end, Models).
