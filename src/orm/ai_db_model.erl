@@ -10,38 +10,28 @@
         ]).
 -export([wakeup/1,sleep/2]).
 -export([build_fields/2,build_fields/3]).
--compile({inline,[
-                  build_field_key/2,
-                  build_fields/4,
-                  schema_attrs/1
-                 ]}).
+-compile({inline,[build_fields/4]}).
 
 
 build_fields(Schema,Input)->
-  AttrsMap = schema_attrs(Schema),
+  Fields = ai_db_schema:schema_fields(Schema),
   lists:foldl(
-    fun({Key,Attrs},Acc)->
-        KeyBin = build_field_key(Key,Attrs),
+    fun(#{name := Key},Acc)->
+        KeyBin = ai_string:to_string(Key),
         build_fields(Key,KeyBin,Input,Acc)
-  end,#{},AttrsMap).
+  end,#{},Fields).
 
 build_fields(Schema,Emnu,Input)->
-  AttrsMap = schema_attrs(Schema),
+  Fields = ai_db_schema:schema_fields(Schema),
   lists:foldl(
-    fun({Key,Attrs},Acc)->
-      case lists:member(Key,Emnu) of
-        true ->
-          KeyBin = build_field_key(Key,Attrs),
-          build_fields(Key,KeyBin,Input,Acc);
-        _ -> Acc
-      end
-  end,#{},AttrsMap).
-
-build_field_key(Key,Attrs) ->
-  case lists:keyfind(as,1,Attrs) of
-    false -> ai_string:to_string(Key);
-    {as,TK} -> ai_string:to_string(TK)
-  end.
+    fun(#{name := Key},Acc)->
+        case lists:member(Key,Emnu) of
+          true ->
+            KeyBin = ai_string:to_string(Key),
+            build_fields(Key,KeyBin,Input,Acc);
+          _ -> Acc
+        end
+    end,#{},Fields).
 
 build_fields(Key,KeyBin,Input,Acc)->
   case maps:get(KeyBin,Input,undefined) of
@@ -49,14 +39,6 @@ build_fields(Key,KeyBin,Input,Acc)->
     Value -> Acc#{Key => Value}
   end.
 
-
-schema_attrs(Schema)->
-  lists:map(fun(F) ->
-                {
-                 ai_db_schema:field_name(F),
-                 ai_db_schema:field_attrs(F)
-                }
-            end,ai_db_schema:schema_fields(Schema)).
 
 
 model_name(Model) -> maps:get(name, Model, undefined).

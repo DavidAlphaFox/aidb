@@ -118,10 +118,6 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
     {Values, CleanConditions} = ai_postgres_clause:prepare_conditions(Conditions),
     Clauses = ai_postgres_clause:where_clause(CleanConditions),
     TableName = ai_postgres_utils:escape_field(ModelName),
-    Schema = ai_db_schema:schema(ModelName),
-    SchemaAs = ai_db_schema:schema_as(Schema),
-    NPColumnNames = lists:map(fun ai_postgres_utils:escape_field/1, SchemaAs),
-    NPColumnsNamesCSV = ai_string:join(NPColumnNames, <<",">>),
     OrderByClause =
         case Sort of
             undefined -> <<>>;
@@ -140,7 +136,7 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
             _ -> <<" WHERE ", Clauses/binary>>
         end,
     Sql1 =
-        <<"SELECT ",NPColumnsNamesCSV/binary," FROM ", TableName/binary,
+        <<"SELECT * FROM ", TableName/binary,
           WhereClause/binary,OrderByClause/binary>>,
 
     Sql2 =
