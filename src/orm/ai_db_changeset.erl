@@ -45,14 +45,14 @@ add_error(#{errors := Errors} = Changeset, Key, Message, Keys) ->
   Changeset#{errors := [{Key, {Message, Keys}} | Errors], is_valid := false}.
 
 %% 应用changest到当前模型上
-apply_changes(#{changes := Changes, data := Data}) when map_size(Changes) == 0 -> Data;
-apply_changes(#{changes := Changes, data := Data, types := Types}) ->
+apply_changes(#{model := Model, changes := Changes}) when map_size(Changes) == 0 -> Model;
+apply_changes(#{model := Model, changes := Changes, types := Types}) ->
   maps:fold(fun(K, V, Acc) ->
     case maps:find(K, Types) of
       {ok, _} -> ai_db_model:set_field(K, V, Acc);
       error   -> Acc
     end
-  end, Data, Changes).
+  end, Model, Changes).
 
 %% 对已经存在的changeset进行二次变更
 cast(#{model := Model, data := Data, types := Types, attrs := Attrs} = CS, Params, Allowed) ->

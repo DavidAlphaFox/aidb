@@ -1,24 +1,23 @@
 -module(ai_db_transform).
 
 -export([
-         fields/2,
+         model/2,
          conditions/4
         ]).
 
 -spec model(function(),map())-> [map()].
-fields(Fun, Model) ->
+model(Fun, Model) ->
   ModelName = ai_db_model:name(Model),
   Schema = ai_db_schema:schema(ModelName),
   SchemaFields = ai_db_schema:fields(Schema),
-  ModelFields =  ai_db_model:fields(Model),
   lists:foldl(fun(Field, Acc) ->
                   FieldType = ai_db_field:type(Field),
                   FieldName = ai_db_field:name(Field),
                   FieldValue =  ai_db_model:get_field(FieldName, Model),
                   FieldAttrs = ai_db_field:attrs(Field),
                   NewValue = Fun(FieldType, FieldName, FieldValue, FieldAttrs),
-                  maps:put(FieldName, NewValue, Acc)
-              end, ModelFields, SchemaFields).
+                  ai_db_model:set_field(FieldName, NewValue, Acc)
+              end, Model, SchemaFields).
 
 -spec conditions(function(),atom(),[tuple()]| tuple(),atom()) -> list().
 conditions(Fun, ModelName, Conditions, FieldTypes) when is_list(Conditions) ->

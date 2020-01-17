@@ -32,7 +32,8 @@ persist(Model, State) ->
                     ID -> ID
                 end
 	    end,
-    Fields = ai_db_transform:model(fun sleep/4, Model),
+    Model0 = ai_db_transform:model(fun sleep/4, Model),
+    Fields = ai_db_model:fields(Model0),
     [IDName | NPFields] = schema_field_names(Schema),
     NPValues = [maps:get(K, Fields, undefined) || K <- NPFields],
     MnesiaRecord = list_to_tuple([ModelName, NewID | NPValues]),
