@@ -24,21 +24,21 @@
 init(Args) -> {ok,#state{conn = undefined, args=Args}}.
 
 persist(Model,State)->
-    ModelName = ai_db_model:model_name(Model),
+    ModelName = ai_db_model:name(Model),
     Schema = ai_db_schema:schema(ModelName),
-    IDField = ai_db_schema:id_name(Schema),
+    IDField = ai_db_schema:id(Schema,name),
     ID = ai_db_model:get_field(IDField,Model),
 
     TableName = ai_postgres_utils:escape_field(ModelName),
 
-    Fields = ai_db_model:model_fields(Model),
+    Fields = ai_db_model:fields(Model),
     NPFields = maps:remove(IDField, Fields),
     NPFieldNames = maps:keys(NPFields),
     NPColumnNames = lists:map(fun ai_postgres_utils:escape_field/1, NPFieldNames),
 
-    SchemaFields = ai_db_schema:schema_fields(Schema),
+    SchemaFields = ai_db_schema:fields(Schema),
     ColumnTypes = [
-                   {ai_db_schema:field_name(F), ai_db_schema:field_type(F),ai_db_schema:field_attrs(F)}
+                   {ai_db_field:name(F), ai_db_field:type(F),ai_db_field:attrs(F)}
                    || F <- SchemaFields
                   ],
     NPColumnValues = lists:map(
@@ -90,7 +90,7 @@ persist(Model,State)->
   end.
 fetch(ModelName,ID,State)->
     Schema = ai_db_schema:schema(ModelName),
-    IDFieldName = ai_db_schema:id_name(Schema),
+    IDFieldName = ai_db_schema:id(Schema,name),
     case find_by(ModelName, [{IDFieldName, ID}], [], 1, 0, State) of
         {{ok, [Model]},NewState} -> {{ok,Model}, NewState};
         {{ok, []}, NewState}    -> {{error, not_found}, NewState};
@@ -164,7 +164,7 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
             RowFun = fun(Row) ->
                              Fields = erlang:tuple_to_list(Row),
                              Pairs = lists:zip(ColumnNames, Fields),
-                             Model = ai_db_model:new_model(ModelName),
+                             Model = ai_db_model:new(ModelName),
                              lists:foldl(FoldFun, Model, Pairs)
                      end,
             Models = lists:map(RowFun, Rows),
