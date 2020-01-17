@@ -16,18 +16,18 @@ init(Options) ->
     {ok, #state{verbose = Verbose}}.
 
 persist(Model, State) ->
-    ModelName = ai_db_model:model_name(Model),
+    ModelName = ai_db_model:name(Model),
     Schema = ai_db_schema:schema(ModelName),
-    IDField = ai_db_schema:id_name(Schema),
+    IDField = ai_db_schema:id(Schema,name),
     ID = ai_db_model:get_field(IDField, Model),
     NewID =
         case ID of
             undefined ->
-                new_id(ModelName, ai_db_schema:id_type(Schema));
+                new_id(ModelName, ai_db_schema:id(Schema,type));
             ID -> ID
 	    end,
     Model2 = ai_db_transform:model(fun sleep/4, Model),
-    Fields = ai_db_model:model_fields(Model2),
+    Fields = ai_db_model:fields(Model2),
 
     [IDField | NPFields] = schema_field_names(Schema),
     NPValues = [maps:get(K, Fields, undefined)
@@ -51,7 +51,7 @@ fetch(ModelName, ID, State) ->
          _ = maybe_log(fetch, [ModelName, ID], State),
 	{{ok,
 	  ai_db_transform:model(fun wakeup/4,
-				result_to_model(Result, Fields))},
+                            result_to_model(Result, Fields))},
 	 State}
     catch
       _:_ -> {{error, not_found}, State}
@@ -61,14 +61,14 @@ delete_by(ModelName, Conditions, State) ->
     MatchSpec = build_match_spec(ModelName, Conditions),
     Transaction = fun () ->
 			  Items = mnesia:select(ModelName, MatchSpec),
-			  lists:foreach(fun mnesia:delete_object/1, Items),
-			  erlang:length(Items)
-		  end,
+                          lists:foreach(fun mnesia:delete_object/1, Items),
+                          erlang:length(Items)
+                  end,
     case mnesia:transaction(Transaction) of
-      {aborted, Reason} -> {{error, Reason}, State};
-      {atomic, Result} ->
-	  _ = maybe_log(delete_by, [ModelName, MatchSpec], State),
-	  {{ok, Result}, State}
+        {aborted, Reason} -> {{error, Reason}, State};
+        {atomic, Result} ->
+            _ = maybe_log(delete_by, [ModelName, MatchSpec], State),
+            {{ok, Result}, State}
     end.
 
 delete_all(ModelName, State) ->
@@ -165,11 +165,9 @@ new_id(ModelName, FieldType) ->
 new_id(string) ->
     ai_uuid:uuid_to_string(ai_uuid:get_v4(), standard);
 new_id(binary) ->
-    ai_uuid:uuid_to_string(ai_uuid:get_v4(),
-			   binary_standard);
+    ai_uuid:uuid_to_string(ai_uuid:get_v4(),binary_standard);
 new_id(integer) -> <<Id:128>> = ai_uuid:get_v4(), Id;
-new_id(float) ->
-    <<Id:128>> = ai_uuid:get_v4(), Id * 1.0;
+new_id(float) -> <<Id:128>> = ai_uuid:get_v4(), Id * 1.0;
 new_id(FieldType) -> exit({unimplemented, FieldType}).
 
 sleep(_, _, undefined, _) -> undefined;
@@ -177,8 +175,8 @@ sleep(string, _, FieldValue, _) ->
     ai_string:to_string(FieldValue);
 sleep(date, _, FieldValue, _) ->
     case ai_db_type:is_datetime(FieldValue) of
-      true -> {FieldValue, {0, 0, 0}};
-      _ -> FieldValue
+        true -> {FieldValue, {0, 0, 0}};
+        _ -> FieldValue
     end;
 sleep(_, _, FieldValue, _) -> FieldValue.
 
@@ -188,15 +186,15 @@ wakeup(_, _, FieldValue, _) -> FieldValue.
 result_to_model(Result, Fields) ->
     [ModelName | Values] = erlang:tuple_to_list(Result),
     Pairs = maps:from_list(lists:zip(Fields, Values)),
-    ai_db_model:new_model(ModelName, Pairs).
+    ai_db_model:new(ModelName, Pairs).
 
 transform_conditions(ModelName, Conditions) ->
     ai_db_transform:conditions(fun validate_date/1,
-			       ModelName, Conditions, [date]).
+                               ModelName, Conditions, [date]).
 
 validate_date({FieldType, _, FieldValue}) ->
     case {FieldType, ai_db_type:is_datetime(FieldValue)} of
-      {date, true} -> {FieldValue, {0, 0, 0}}
+        {date, true} -> {FieldValue, {0, 0, 0}}
     end.
 
 %% @doc http://www.erlang.org/doc/apps/erts/match_spec.html
@@ -205,7 +203,7 @@ build_match_spec(ModelName, Condition)
     build_match_spec(ModelName, [Condition]);
 build_match_spec(ModelName, Conditions) ->
     NewConditions = transform_conditions(ModelName,
-					 Conditions),
+                                         Conditions),
     Schema = ai_db_schema:schema(ModelName),
     Fields = schema_field_names(Schema),
     FieldsMap = maps:from_list([field_tuple(I, Fields)
@@ -214,53 +212,45 @@ build_match_spec(ModelName, Conditions) ->
     % '$1' and '$2' in the MatchHead list. Without this fix, this store
     % would fail when trying to use `find_by` function.
     OrderingFun = fun (A, B) ->
-			  "$" ++ ANumber = erlang:atom_to_list(A),
-			  "$" ++ BNumber = erlang:atom_to_list(B),
-			  erlang:list_to_integer(ANumber) =<
-			    erlang:list_to_integer(BNumber)
-		  end,
-    ValuesSorted = lists:sort(OrderingFun,
-			      maps:values(FieldsMap)),
-    MatchHead = erlang:list_to_tuple([ModelName
-				      | ValuesSorted]),
-    Guard = [condition_to_guard(Condition, FieldsMap)
-	     || Condition <- NewConditions],
+                          "$" ++ ANumber = erlang:atom_to_list(A),
+                          "$" ++ BNumber = erlang:atom_to_list(B),
+                          erlang:list_to_integer(ANumber) =<
+                              erlang:list_to_integer(BNumber)
+                  end,
+    ValuesSorted = lists:sort(OrderingFun,maps:values(FieldsMap)),
+    MatchHead = erlang:list_to_tuple([ModelName | ValuesSorted]),
+    Guard = [condition_to_guard(Condition, FieldsMap) || Condition <- NewConditions],
     Result = '$_',
     [{MatchHead, Guard, [Result]}].
 
 field_tuple(I, Fields) ->
     FieldName = lists:nth(I, Fields),
-    FieldWildcard = erlang:list_to_atom([$$
-					 | erlang:integer_to_list(I)]),
+    FieldWildcard = erlang:list_to_atom([$$ | erlang:integer_to_list(I)]),
     {FieldName, FieldWildcard}.
 
 schema_field_names(Schema) ->
-    [ai_db_schema:field_name(Field)
-     || Field <- schema_fields(Schema)].
+    [ai_db_ai_db_field:name(Field) || Field <- schema_fields(Schema)].
 
 schema_fields(Schema) ->
-    place_id_first(ai_db_schema:schema_fields(Schema)).
+    place_id_first(ai_db_schema:fields(Schema)).
 
 place_id_first(Fields) -> place_id_first(Fields, []).
 
 place_id_first([], Acc) -> lists:reverse(Acc);
 place_id_first([Field | Fields], Acc) ->
-    case lists:member(id, ai_db_schema:field_attrs(Field))
-	of
-      true -> [Field | lists:reverse(Acc)] ++ Fields;
-      false -> place_id_first(Fields, [Field | Acc])
+    case lists:member(id, ai_db_field:attrs(Field)) of
+        true -> [Field | lists:reverse(Acc)] ++ Fields;
+        false -> place_id_first(Fields, [Field | Acc])
     end.
 
 condition_to_guard({'and', [Expr1]}, FieldsMap) ->
     condition_to_guard(Expr1, FieldsMap);
-condition_to_guard({'and', [Expr1 | Exprs]},
-		   FieldsMap) ->
+condition_to_guard({'and', [Expr1 | Exprs]},FieldsMap) ->
     {'andalso', condition_to_guard(Expr1, FieldsMap),
      condition_to_guard({'and', Exprs}, FieldsMap)};
 condition_to_guard({'or', [Expr1]}, FieldsMap) ->
     condition_to_guard(Expr1, FieldsMap);
-condition_to_guard({'or', [Expr1 | Exprs]},
-		   FieldsMap) ->
+condition_to_guard({'or', [Expr1 | Exprs]}, FieldsMap) ->
     {'orelse', condition_to_guard(Expr1, FieldsMap),
      condition_to_guard({'or', Exprs}, FieldsMap)};
 condition_to_guard({'not', Expr}, FieldsMap) ->
