@@ -94,7 +94,7 @@ validate(Field,Attr,Changeset)->
                 ({number,Opts},Acc) -> validate_number(Acc, Field, Opts);
                 ({format,Format},Acc) -> validate_format(Acc, Field, Format);
                 ({inclusion,Enum},Acc) -> validate_inclusion(Acc, Field, Enum);
-                (required,Acc) -> validate_required(Acc, [Field]);
+                (not_null,Acc) -> validate_required(Acc, [Field]);
                 (_,Acc) -> Acc
    end,Changeset,Attr).
 %% 验证修改
@@ -121,7 +121,7 @@ validate_change(#{changes := Changes, errors := Errors} = Changeset, Field, Vali
         []      -> Changeset;
         [_ | _] -> Changeset#{errors := NewErrors2 ++ Errors, is_valid := false}
     end.
-
+%% verify not null
 validate_required(#{required := Required, errors := Errors} = CS, Fields) ->
   NewErrors =
         [
@@ -321,7 +321,7 @@ ensure_field_exists(#{types := Types}, Field) ->
     true  -> true;
     false -> error({badarg, Field})
   end.
-
+is_nil(null) -> true;
 is_nil(undefined) -> true;
 is_nil(_)         -> false.
 
