@@ -10,41 +10,34 @@
         ]).
 -export([wakeup/1,sleep/2]).
 -export([build/2,build/3]).
--compile({inline,[build_fields/4]}).
+-compile({inline,[build_fields/2]}).
 
--spec build(map(),map()) -> map().
-build(Schema,Input)->
+-spec build(atom(),map()) -> map().
+build(ModelName,Input)->
+  EntityFields = build_fields(ModelName, Input),
+  new(ModelName,EntityFields).
+
+-spec build(atom(),[atom()],map()) -> map().
+build(ModelName,Allowed,Input)->
+  EntityFields = build_fields(ModelName, Input),
+  FilteredEntityFields = maps:with(Allowed,EntityFields),
+  new(ModelName,FilteredEntityFields).
+
+build_fields(ModelName,Input)->
+  Schema = ai_db_schema:schema(ModelName),
   Fields = ai_db_schema:fields(Schema),
-  ModelName = ai_db_schema:name(Schema),
-  ModelFields =
-    lists:foldl(
-      fun(#{name := Key},Acc)->
-          KeyBin = ai_string:to_string(Key),
-          build_fields(Key,KeyBin,Input,Acc)
-      end,#{},Fields),
-  new(ModelName,ModelFields).
-
--spec build(map(),[atom()],map()) -> map().
-build(Schema,Emnu,Input)->
-  Fields = ai_db_schema:fields(Schema),
-  ModelName = ai_db_schema:name(Schema),
-  ModelFields =
-    lists:foldl(
-      fun(#{name := Key},Acc)->
-          case lists:member(Key,Emnu) of
-            true ->
-              KeyBin = ai_string:to_string(Key),
-              build_fields(Key,KeyBin,Input,Acc);
-            _ -> Acc
-          end
-      end,#{},Fields),
-  new(ModelName,ModelFields).
-
-build_fields(Key,KeyBin,Input,Acc)->
-  case maps:get(KeyBin,Input,undefined) of
-    undefined -> Acc;
-    Value -> Acc#{Key => Value}
-  end.
+  lists:foldl(
+    fun(#{name := Key},Acc)->
+        case maps:get(Key,Input,undefined) of
+          undefined ->
+            KeyBin = ai_string:to_string(Key),
+            case maps:get(KeyBin,Input,undefined) of
+              undefined -> Acc;
+              Value -> Acc#{Key => Value}
+            end;
+          Value -> Acc#{Key => Value}
+        end
+    end,#{},Fields).
 
 -spec name(map()) -> atom().
 name(Model) -> maps:get(name, Model, undefined).
@@ -65,7 +58,7 @@ set_field(FieldName, FieldValue, Fields) ->
 -spec new(atom()) -> map().
 new(ModelName) -> new(ModelName, #{}).
 
--spec new(atom(),term()) -> map().
+-spec new(atom(),map()) -> map().
 new(ModelName, Fields) ->
   Module = module_attr(ModelName),
   #{name => ModelName, module => Module, fields => Fields}.
@@ -84,6 +77,7 @@ sleep(Name,Entity)->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec module_attr(atom()) -> atom().
 module_attr(ModelName)->
   Key = {ModelName,module},
   Fun = fun() ->

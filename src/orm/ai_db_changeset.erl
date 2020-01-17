@@ -14,43 +14,26 @@
 
 %% Properties
 -export([
-  schema/1,
-  store/1,
-  data/1,
-  params/1,
+  model/1,
   errors/1,
-  changes/1,
   is_valid/1,
-  types/1,
   required/1
 ]).
 
 %% API
 -export([
-  add_error/3, add_error/4,
-  apply_changes/1,
-  cast/3, cast/4,
-  change/2, change/3,
-  get_field/2, get_field/3,
-  put_change/3,
-  get_change/2, get_change/3,
-  delete_change/2,
-  validate_change/3,
-  validate_required/2,
-  validate_inclusion/3,
-  validate_number/3,
-  validate_length/3,
-  validate_format/3
-]).
+         add_error/3, add_error/4,
+         apply_changes/1,
+         cast/3, cast/4,
+         validate/1,
+         validate_change/3
+        ]).
 
 %%%=============================================================================
 %%% Properties
 %%%=============================================================================
 
-schema(#{schema := Value}) -> Value.
-store(#{store := Value}) -> Value.
-data(#{data := Value}) -> Value.
-params(#{params := Value}) -> Value.
+model(#{model := Value}) -> Value.
 errors(#{errors := Value}) -> Value.
 changes(#{changes := Value}) -> Value.
 is_valid(#{is_valid := Value}) -> Value.
@@ -64,6 +47,7 @@ required(#{required := Value}) -> Value.
 add_error(Changeset, Key, Message) -> add_error(Changeset, Key, Message, []).
 add_error(#{errors := Errors} = Changeset, Key, Message, Keys) ->
   Changeset#{errors := [{Key, {Message, Keys}} | Errors], is_valid := false}.
+
 %% 应用changest到当前模型上
 apply_changes(#{changes := Changes, data := Data}) when map_size(Changes) == 0 -> Data;
 apply_changes(#{changes := Changes, data := Data, types := Types}) ->
@@ -75,34 +59,14 @@ apply_changes(#{changes := Changes, data := Data, types := Types}) ->
   end, Data, Changes).
 
 %% 对已经存在的changeset进行二次变更
-cast(#{schema := Schema, store := Store, data := Data, types := Types} = CS, Params, Allowed) ->
-  NewChangeset = do_cast({Schema, Store, Data, Types}, Params, Allowed),
+cast(#{model := ModelName, store := Store, data := Data, types := Types} = CS, Params, Allowed) ->
+  NewChangeset = do_cast({ModelName, Store, Data, Types}, Params, Allowed),
   cast_merge(CS, NewChangeset).
 %% 给某个模型进行变更，构建changeset
-cast(SchemaName, Fields, Params, Allowed) ->
-  Metadata = get_metadata(ai_db_model:new(SchemaName, Fields)),
+cast(ModelName, Fields, Params, Allowed) ->
+  Metadata = get_metadata(ai_db_model:new(ModelName, Fields)),
   do_cast(Metadata, Params, Allowed).
 
-change(#{changes := _, types := _} = Changeset, Changes) ->
-  NewChanges = changes(get_changed(Changeset, Changes)),
-  Changeset#{changes  := NewChanges}.
-
-change(SchemaName, Fields, Changes) ->
-    Doc  = ai_db_model:new(SchemaName, Fields),
-    {SchemaName, Store, Data, Types} = get_metadata(Doc),
-    Changeset = (changeset())#{
-                               schema   := SchemaName,
-                               store    := Store,
-                               data     := Data,
-                               types    := Types
-                              },
-  NewChanges = changes(get_changed(Changeset, Changes)),
-  Changeset#{changes  := NewChanges}.
-
-get_changed(Changeset, NewChanges) ->
-    maps:fold(fun(K, V, Acc) ->
-                  put_change(Acc, K, V)
-              end, Changeset, NewChanges).
 
 get_field(Changeset, Key) -> get_field(Changeset, Key, undefined).
 
@@ -116,26 +80,23 @@ get_field(#{changes := Changes, data := Data}, Key, Default) ->
       end
   end.
 
-put_change(#{changes := Changes, data := Data} = Changeset, Key, Value) ->
-  NewChanges =
-        case maps:find(Key, Data) of
-            {ok, V} when V /= Value ->
-                maps:put(Key, Value, Changes);
-            _ ->
-                case maps:is_key(Key, Changes) of
-                    true  -> maps:remove(Key, Changes);
-                    false -> Changes
-                end
-        end,
-    Changeset#{changes := NewChanges}.
-
-get_change(Changeset, Key) -> get_change(Changeset, Key, undefined).
-get_change(#{changes := Changes}, Key, Default) -> maps:get(Key, Changes, Default).
-
-delete_change(#{changes := Changes} = Changeset, Key) ->
-  NewChanges = maps:remove(Key, Changes),
-  Changeset#{changes := NewChanges}.
-
+validate(#{changes := Changes, attrs := Attrs } = Changeset)->
+  Keys = maps:keys(Changes),
+  lists:foldl(fun(Key,Acc)->
+                  case maps:get(Key,Attrs) of
+                    [] -> Acc;
+                    Attr -> validate(Key,Attr,Acc)
+                  end
+              end,Changeset,Keys).
+validate(Field,Attr,Changeset)->
+  lists:foldl(fun
+                ({length,Opts},Acc) -> validate_length(Acc, Field, Opts);
+                ({number,Opts},Acc) -> validate_number(Acc, Field, Opts);
+                ({format,Format},Acc) -> validate_format(Acc, Field, Format);
+                ({inclusion,Enum},Acc) -> validate_inclusion(Acc, Field, Enum);
+                (required,Acc) -> validate_required(Acc, [Field]);
+                (_,Acc) -> Acc
+   end,Changeset,Attr).
 %% 验证修改
 validate_change(#{changes := Changes, errors := Errors} = Changeset, Field, Validator) ->
     _ = ensure_field_exists(Changeset, Field),
@@ -165,7 +126,7 @@ validate_required(#{required := Required, errors := Errors} = CS, Fields) ->
   NewErrors =
         [
          begin
-             {F, {blank, [{validation, required}]}}
+           {F, {blank, [{validation, required}]}}
          end || F <- Fields, is_missing(CS, F),
                 ensure_field_exists(CS, F),
                 is_nil(fetch(F, Errors))
@@ -239,29 +200,33 @@ validate_format(Changeset, Field, Format) ->
 %%%=============================================================================
 %% Params 是map
 %% Allowed 是list
-do_cast({SchemaName, Store, Data, Types}, Params, Allowed) ->
-    NewParams = convert_params(Params),
-    FilteredParams = maps:with(Allowed, NewParams),
+do_cast({ModelName, Store, Data, Types,Attrs}, Params, Allowed) ->
+  NewParams = convert_params(Params),
+  FilteredParams =
+    case Allowed of
+      [] -> NewParams;
+      _ -> maps:with(Allowed, NewParams)
+    end,
     %% 生成Changes，错误和是否验证
-    {Changes, Errors, IsValid} = maps:fold(
-                                   fun(ParamKey, ParamVal, Acc) ->
-                                           process_param(ParamKey, ParamVal, Types, Acc)
-                                   end, {#{}, [], true}, FilteredParams),
-    %% 申城changeset
-    (changeset())#{
-                   schema   := SchemaName,
-                   store    := Store,
-                   data     := Data,
-                   params   := FilteredParams,
-                   changes  := Changes,
-                   errors   := Errors,
-                   is_valid := IsValid,
-                   types    := Types
-                  }.
-
+  {Changes, Errors, IsValid} = maps:fold(
+                                 fun(ParamKey, ParamVal, Acc) ->
+                                     process_param(ParamKey, ParamVal, Types, Acc)
+                                 end, {#{}, [], true}, FilteredParams),
+  %% 生成changeset
+  (changeset())#{
+                 model   := ModelName,
+                 store    := Store,
+                 data     := Data,
+                 params   := FilteredParams,
+                 changes  := Changes,
+                 errors   := Errors,
+                 is_valid := IsValid,
+                 types    := Types,
+                 attrs  := Attrs
+                }.
 
 changeset() ->
-  #{schema   => undefined,
+  #{model    => undefined,
     store    => undefined,
     data     => undefined,
     params   => undefined,
@@ -269,20 +234,30 @@ changeset() ->
     changes  => #{},
     is_valid => true,
     types    => undefined,
+    attrs => undefined,
     required => []}.
 
+store_attr(ModelName)->
+  Key = {ModelName,store},
+  Fun = fun() -> ai_db_manager:store(ModelName) end,
+  ai_process:get(Key,Fun).
+
 get_metadata(Model) ->
-  SchemaName = ai_db_model:name(Model),
-  Store = ai_db_manager:store(SchemaName),
+  ModelName = ai_db_model:name(Model),
+  Store = store_attr(ModelName),
   Data = ai_db_model:fields(Model),
   Module = ai_db_model:module(Model),
-  Types = schema_types(Module:schema()),
-  {SchemaName, Store, Data, Types}.
+  {Types,Attrs} = fields_info(Module:schema()),
+  {ModelName, Store, Data, Types,Attrs}.
 
-schema_types(Schema) ->
-  lists:foldl(fun(F, Acc) ->
-    maps:put(ai_db_field:name(F), ai_db_field:type(F), Acc)
-  end, #{}, ai_db_schema:fields(Schema)).
+fields_info(Schema) ->
+  lists:foldl(fun(F, {T,A}) ->
+                  Name = ai_db_field:name(F),
+                  {
+                   maps:put(Name, ai_db_field:type(F),T),
+                   maps:put(Name, ai_db_field:attrs(F),A)
+                  }
+              end, {#{},#{}}, ai_db_schema:fields(Schema)).
 
 convert_params(Params) ->
   maps:fold(fun
