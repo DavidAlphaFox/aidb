@@ -42,7 +42,7 @@ persist(Model, State) ->
                             end) of
         {aborted, Reason} -> {{error, Reason}, State};
         {atomic, ok} ->
-            NewModel = ai_db_model:set_field(IDField, NewID, Model),
+            NewModel = ai_db_model:set_field(IDName, NewID, Model),
             NewModel0 = ai_db_model:persist(NewModel),
             _ = maybe_log(persist, [ModelName, NewModel0], State),
             {{ok, NewModel0}, State}
