@@ -18,6 +18,7 @@
          dirty/2,
          transaction/2
         ]).
+
 -include_lib("epgsql/include/epgsql.hrl").
 -record(state, {conn, args}).
 
@@ -26,13 +27,31 @@ init(Args) -> {ok,#state{conn = undefined, args=Args}}.
 persist(Model,State)->
     ModelName = ai_db_model:name(Model),
     Schema = ai_db_schema:schema(ModelName),
-    IDField = ai_db_schema:id(Schema,name),
-    ID = ai_db_model:get_field(IDField,Model),
+    IDField = ai_db_schema:id(Schema),
+    IDName = ai_db_field:name(IDField),
+    NoneAutoID = ai_db_field:is(not_auto,IDField),
+    IsNew = ai_db_model:is_new(Model),
+    ID = ai_db_model:get_field(IDName,Model),
 
+    InsertOrUpdate =
+        case {IsNew,NoneAutoID} of
+            {true,true} -> insert;
+            {false,true} -> update;
+            {true,false} -> insert;
+            {false,false} -> update
+        end,
+
+    %% 表名
     TableName = ai_postgres_utils:escape_field(ModelName),
-
+    %% 数据
     Fields = ai_db_model:fields(Model),
-    NPFields = maps:remove(IDField, Fields),
+    %% 是否需要保存ID这一列
+    NPFields =
+        case {InsertOrUpdate,NoneAutoID} of
+            {insert,true} -> Fields;
+            _ -> maps:remove(IDName, Fields)
+        end,
+    %% 所有列
     NPFieldNames = maps:keys(NPFields),
     NPColumnNames = lists:map(fun ai_postgres_utils:escape_field/1, NPFieldNames),
 
@@ -41,35 +60,39 @@ persist(Model,State)->
                    {ai_db_field:name(F), ai_db_field:type(F),ai_db_field:attrs(F)}
                    || F <- SchemaFields
                   ],
+    %%  需要更新的值
     NPColumnValues = lists:map(
                        fun (N) ->
                                {N, _T, _A} = lists:keyfind(N, 1, ColumnTypes),
                                maps:get(N, Fields)
                        end, NPFieldNames),
-    IDFieldBin = ai_postgres_utils:escape_field(IDField),
+    %% ID
+    IDNameBin = ai_postgres_utils:escape_field(IDName),
+
     {Sql, Values} =
-        case ID of
-            undefined ->
+        case InsertOrUpdate of
+            insert ->
                 NPColumnsNamesCSV = ai_string:join(NPColumnNames, <<",">>),
                 SlotsFun = fun(N) -> NBin = erlang:integer_to_binary(N), <<"$",NBin/binary>>  end,
                 InsertSlots = lists:map(SlotsFun, lists:seq(1, erlang:length(NPFieldNames))),
                 InsertSlotsCSV = ai_string:join(InsertSlots, <<", ">>),
                 InsertSql = <<"INSERT INTO ", TableName/binary," ( ", NPColumnsNamesCSV/binary, " ) ",
                               " VALUES "," ( ", InsertSlotsCSV/binary, " ) ",
-                              "RETURNING ", IDFieldBin/binary>>,
-                {InsertSql, NPColumnValues};
-            _ ->
-                UpdateFun = fun(FieldName, {N, Slots}) ->
-                                    NBin = erlang:integer_to_binary(N),
-                                    Slot = <<FieldName/binary, " = $", NBin/binary>>,
-                                    {N + 1, [Slot | Slots]}
-                            end,
+                              "RETURNING ", IDNameBin/binary>>,
+                {InsertSql,NPColumnValues};
+            update ->
+                UpdateFun =
+                    fun(FieldName, {N, Slots}) ->
+                            NBin = erlang:integer_to_binary(N),
+                            Slot = <<FieldName/binary, " = $", NBin/binary>>,
+                            {N + 1, [Slot | Slots]}
+                    end,
                 {IDIndex, UpdateSlots} = lists:foldl(UpdateFun, {1, []}, NPColumnNames),
                 UpdateSlotsCSV = ai_string:join(UpdateSlots, <<",">>),
                 IDIndexBin = erlang:integer_to_binary(IDIndex),
                 IDSlot = <<"$",IDIndexBin/binary>>,
                 UpdateSql = <<"UPDATE ", TableName/binary," SET ",UpdateSlotsCSV/binary,
-                              " WHERE ", IDFieldBin/binary, " = ",IDSlot/binary>>,
+                              " WHERE ", IDNameBin/binary, " = ",IDSlot/binary>>,
                 UpdateValues = NPColumnValues ++ [ID],
                 {UpdateSql, UpdateValues}
         end,
@@ -82,12 +105,15 @@ persist(Model,State)->
     case transaction(Fun,State) of
         {{ok, _Count, _Columns, Rows},NewState} ->
             {LastId} = erlang:hd(Rows),
-            NewModel = ai_db_model:set_field(IDField, LastId, Model),
-            {{ok, NewModel}, NewState};
-        {{ok, 1},NewState} -> {{ok, Model}, NewState};
+            NewModel = ai_db_model:set_field(IDName, LastId, Model),
+            NewModel0 = ai_db_model:persist(NewModel),
+            {{ok, NewModel0}, NewState};
+        {{ok, 1},NewState} -> {{ok, ai_db_model:persist(Model)}, NewState};
         {{ok,_Count},NewState} -> {{error,not_persist},NewState};
         {Error, NewState} -> {Error, NewState}
   end.
+
+
 fetch(ModelName,ID,State)->
     Schema = ai_db_schema:schema(ModelName),
     IDFieldName = ai_db_schema:id(Schema,name),
@@ -158,14 +184,11 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
         {{ok, Columns, Rows},NewState} ->
             ColFun = fun(Col) -> erlang:binary_to_atom(Col#column.name, utf8) end,
             ColumnNames = lists:map(ColFun, Columns),
-            FoldFun = fun({Name, Value}, Model) ->
-                              ai_db_model:set_field(Name, Value,Model)
-                      end,
             RowFun = fun(Row) ->
                              Fields = erlang:tuple_to_list(Row),
                              Pairs = lists:zip(ColumnNames, Fields),
-                             Model = ai_db_model:new(ModelName),
-                             lists:foldl(FoldFun, Model, Pairs)
+                             Model = ai_db_model:new(ModelName,Pairs),
+                             ai_db_model:persist(Model)
                      end,
             Models = lists:map(RowFun, Rows),
             {{ok, Models}, NewState};
@@ -185,10 +208,8 @@ count(ModelName,State) ->
       {{ok, erlang:binary_to_integer(Count)}, NewState};
     Error -> Error
   end.
-count_by(ModelName, undefined, State) ->
-  count(ModelName, State);
-count_by(ModelName, [], State) ->
-  count(ModelName, State);
+count_by(ModelName, undefined, State) -> count(ModelName, State);
+count_by(ModelName, [], State) -> count(ModelName, State);
 count_by(ModelName,Conditions,State) ->
     {Values, CleanConditions} = ai_postgres_clause:prepare_conditions(Conditions),
     Clauses = ai_postgres_clause:where_clause(CleanConditions),
@@ -233,6 +254,7 @@ transaction(Fun,State) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 
 alive(Conn) ->
     try
