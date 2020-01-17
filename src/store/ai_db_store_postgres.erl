@@ -187,7 +187,7 @@ find_by(ModelName,Conditions,Sort,Limit,Offset,State) ->
             RowFun = fun(Row) ->
                              Fields = erlang:tuple_to_list(Row),
                              Pairs = lists:zip(ColumnNames, Fields),
-                             Model = ai_db_model:new(ModelName,Pairs),
+                             Model = ai_db_model:new(ModelName,maps:from_list(Pairs)),
                              ai_db_model:persist(Model)
                      end,
             Models = lists:map(RowFun, Rows),
