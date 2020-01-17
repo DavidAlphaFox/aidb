@@ -16,13 +16,13 @@
 -spec build(atom(),map()) -> map().
 build(ModelName,Input)->
   EntityFields = build_fields(ModelName, Input),
-  new(ModelName,EntityFields,persist).
+  new(ModelName,EntityFields).
 
--spec build(atom(),[atom()],map()) -> map().
-build(ModelName,Allowed,Input)->
+-spec build(atom(),map(),[atom()]) -> map().
+build(ModelName,Input,Allowed)->
   EntityFields = build_fields(ModelName, Input),
   FilteredEntityFields = maps:with(Allowed,EntityFields),
-  new(ModelName,FilteredEntityFields,persist).
+  new(ModelName,FilteredEntityFields).
 
 build_fields(ModelName,Input)->
   Schema = ai_db_schema:schema(ModelName),
@@ -59,7 +59,10 @@ set_field(FieldName, FieldValue,Model = #{fields := Fields}) ->
 new(ModelName) -> new(ModelName, #{}).
 
 -spec new(atom(),map()) -> map().
-new(ModelName, Fields) -> new(ModelName,Fields,new).
+new(ModelName, Fields) ->
+  Module = module_attr(ModelName),
+  #{name => ModelName, module => Module,
+    fields => Fields,attrs => [new]}.
 
 -spec persist(map()) -> map().
 persist(Model)-> Model#{attrs => [persist]}.
@@ -78,8 +81,3 @@ module_attr(ModelName)->
   ai_process:get(Key,Fun).
 
 is(What, #{attrs := Attributes}) -> proplists:is_defined(What,Attributes).
-
-new(ModelName,Fields,NewOrPersist)->
-  Module = module_attr(ModelName),
-  #{name => ModelName, module => Module,
-    fields => Fields,attrs => [NewOrPersist]}.
