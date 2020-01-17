@@ -2,7 +2,7 @@
 
 -export([start_pool/1]).
 -export([register_model/3]).
--export([fetch/2, persist/2]).
+-export([fetch/2, persist/1]).
 -export([find_one/2,find_all/1,find_all/4,
          find_by/2,find_by/4,find_by/5]).
 -export([delete_all/1,delete/2,delete_by/2]).
@@ -15,21 +15,22 @@ start_pool(Args) ->
 register_model(ModelName,ModelStore,ModelAttrs)->
   ai_db_manager:register(ModelName,ModelStore,ModelAttrs).
 
-persist(ModelName, UserModel) ->
-    Model = ai_db_model:sleep(ModelName, UserModel),
+persist(Model) ->
+    ModelName = ai_db_model:name(Model),
     Store = ai_db_manager:store(ModelName),
     case ai_db_store:persist(Store, Model) of
-      {ok, NewModel} -> ai_db_model:wakeup(NewModel);
+      {ok, NewModel} -> NewModel;
       Error -> exit(Error)
     end.
 
 fetch(ModelName, Id) ->
     Store = ai_db_manager:store(ModelName),
     case ai_db_store:fetch(Store, ModelName, Id) of
-      {ok, Model} -> ai_db_model:wakeup(Model);
+      {ok, Model} -> Model;
       {error,not_found} -> not_found;
       Error -> exit(Error)
     end.
+
 find_one(ModelName, Conditions) ->
   case find_by(ModelName, Conditions, 1, 0) of
     []          -> not_found;
@@ -37,24 +38,24 @@ find_one(ModelName, Conditions) ->
   end.
 find_all(ModelName) ->
   case ai_db_store:find_all(ai_db_manager:store(ModelName), ModelName) of
-    {ok, Models} -> models_wakeup(Models);
+    {ok, Models} -> Models;
     Error      -> exit(Error)
   end.
 find_all(ModelName, SortFields, Limit, Offset) ->
   case ai_db_store:find_all(ai_db_manager:store(ModelName),ModelName,SortFields,Limit,Offset) of
-    {ok,Models} -> models_wakeup(Models);
+    {ok,Models} -> Models;
     Error -> exit(Error)
   end.
 find_by(ModelName,Conditions)->
   Store = ai_db_manager:store(ModelName),
   case ai_db_store:find_by(Store, ModelName, Conditions) of
-    {ok, Models} -> models_wakeup(Models);
+    {ok, Models} -> Models;
     Error      -> exit(Error)
   end.
 find_by(ModelName, Conditions, Limit, Offset) ->
   Store = ai_db_manager:store(ModelName),
   case ai_db_store:find_by(Store, ModelName, Conditions, Limit, Offset) of
-    {ok, Models} -> models_wakeup(Models);
+    {ok, Models} -> Models;
     Error      -> exit(Error)
   end.
 
@@ -62,7 +63,7 @@ find_by(ModelName, Conditions, SortFields, Limit, Offset) ->
   NormalizedSortFields = normalize_sort_fields(SortFields),
   Store = ai_db_manager:store(ModelName),
   case ai_db_store:find_by(Store, ModelName, Conditions, NormalizedSortFields, Limit, Offset) of
-    {ok, Models} -> models_wakeup(Models);
+    {ok, Models} -> Models;
     Error      -> exit(Error)
   end.
 
@@ -109,9 +110,6 @@ store({Name, Opts}) ->
                  {max_overflow, MaxOverflow},
                  {worker_module, ai_db_store}],
   ai_pool:pool_spec(Name, PoolBoyOpts, Opts).
-
-models_wakeup(Models) ->
-  lists:map(fun(Model) -> ai_db_model:wakeup(Model) end, Models).
 
 normalize_sort_fields(FieldName) when is_atom(FieldName) ->
   [{FieldName, asc}];
