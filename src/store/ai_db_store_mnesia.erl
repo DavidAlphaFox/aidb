@@ -229,7 +229,7 @@ field_tuple(I, Fields) ->
     {FieldName, FieldWildcard}.
 
 schema_field_names(Schema) ->
-    [ai_db_ai_db_field:name(Field) || Field <- schema_fields(Schema)].
+    [ai_db_field:name(Field) || Field <- schema_fields(Schema)].
 
 schema_fields(Schema) ->
     place_id_first(ai_db_schema:fields(Schema)).
