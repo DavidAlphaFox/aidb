@@ -18,30 +18,33 @@ init(Options) ->
 persist(Model, State) ->
     ModelName = ai_db_model:name(Model),
     Schema = ai_db_schema:schema(ModelName),
-    IDField = ai_db_schema:id(Schema,name),
-    ID = ai_db_model:get_field(IDField, Model),
+    IDField = ai_db_schema:id(Schema),
+    IDName = ai_db_field:name(IDField),
+    IDType = ai_db_field:type(IDField),
+    NoneAutoID = ai_db_field:is(not_auto,IDField),
+    ID = ai_db_model:get_field(IDName, Model),
     NewID =
-        case ID of
-            undefined ->
-                new_id(ModelName, ai_db_schema:id(Schema,type));
-            ID -> ID
+        if
+            NoneAutoID =:= true -> ID;
+            true ->
+                case ID of
+                    undefined -> new_id(ModelName,IDType);
+                    ID -> ID
+                end
 	    end,
-    Model2 = ai_db_transform:model(fun sleep/4, Model),
-    Fields = ai_db_model:fields(Model2),
-
-    [IDField | NPFields] = schema_field_names(Schema),
-    NPValues = [maps:get(K, Fields, undefined)
-		|| K <- NPFields],
+    Fields = ai_db_transform:model(fun sleep/4, Model),
+    [IDName | NPFields] = schema_field_names(Schema),
+    NPValues = [maps:get(K, Fields, undefined) || K <- NPFields],
     MnesiaRecord = list_to_tuple([ModelName, NewID | NPValues]),
-    case mnesia:transaction(
-           fun () -> mnesia:write(MnesiaRecord) end
-          )
-	of
+    case mnesia:transaction(fun () ->
+                                    mnesia:write(MnesiaRecord)
+                            end) of
         {aborted, Reason} -> {{error, Reason}, State};
         {atomic, ok} ->
             NewModel = ai_db_model:set_field(IDField, NewID, Model),
-            _ = maybe_log(persist, [ModelName, NewModel], State),
-            {{ok, NewModel}, State}
+            NewModel0 = ai_db_model:persist(NewModel),
+            _ = maybe_log(persist, [ModelName, NewModel0], State),
+            {{ok, NewModel0}, State}
     end.
 
 fetch(ModelName, ID, State) ->
@@ -171,8 +174,7 @@ new_id(float) -> <<Id:128>> = ai_uuid:get_v4(), Id * 1.0;
 new_id(FieldType) -> exit({unimplemented, FieldType}).
 
 sleep(_, _, undefined, _) -> undefined;
-sleep(string, _, FieldValue, _) ->
-    ai_string:to_string(FieldValue);
+sleep(string, _, FieldValue, _) -> ai_string:to_string(FieldValue);
 sleep(date, _, FieldValue, _) ->
     case ai_db_type:is_datetime(FieldValue) of
         true -> {FieldValue, {0, 0, 0}};
@@ -231,8 +233,7 @@ field_tuple(I, Fields) ->
 schema_field_names(Schema) ->
     [ai_db_field:name(Field) || Field <- schema_fields(Schema)].
 
-schema_fields(Schema) ->
-    place_id_first(ai_db_schema:fields(Schema)).
+schema_fields(Schema) -> place_id_first(ai_db_schema:fields(Schema)).
 
 place_id_first(Fields) -> place_id_first(Fields, []).
 
@@ -243,8 +244,7 @@ place_id_first([Field | Fields], Acc) ->
         false -> place_id_first(Fields, [Field | Acc])
     end.
 
-condition_to_guard({'and', [Expr1]}, FieldsMap) ->
-    condition_to_guard(Expr1, FieldsMap);
+condition_to_guard({'and', [Expr1]}, FieldsMap) -> condition_to_guard(Expr1, FieldsMap);
 condition_to_guard({'and', [Expr1 | Exprs]},FieldsMap) ->
     {'andalso', condition_to_guard(Expr1, FieldsMap),
      condition_to_guard({'and', Exprs}, FieldsMap)};

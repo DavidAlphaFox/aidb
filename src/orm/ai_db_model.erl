@@ -56,9 +56,7 @@ set_field(FieldName, FieldValue,
           Model = #{fields := Fields, attrs := Attr}) ->
   Fields0 = maps:put(FieldName, FieldValue, Fields),
   Attr0 = sets:add_element(dirty,Attr),
-  Model#{fields => Fields0, attrs => Attr0};
-set_field(FieldName, FieldValue, Fields) ->
-  maps:put(FieldName, FieldValue, Fields).
+  Model#{fields => Fields0, attrs => Attr0}.
 
 -spec new(atom()) -> map().
 new(ModelName) -> new(ModelName, #{}).
@@ -68,7 +66,8 @@ new(ModelName, Fields) -> new(ModelName,Fields,new).
 
 persist(#{attrs := Attr} = Model)->
   Attr0 = sets:del_element(new,Attr),
-  Model#{attrs => Attr0}.
+  Attr1 = sets:del_element(dirty,Attr0),
+  Model#{attrs => Attr1}.
 
 is_new(Model) -> is(new,Model).
 is_dirty(Model) -> is(dirty,Model).
