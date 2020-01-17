@@ -14,7 +14,6 @@
 
 %% Properties
 -export([
-  model/1,
   errors/1,
   is_valid/1,
   required/1
@@ -23,17 +22,14 @@
 %% API
 -export([
          add_error/3, add_error/4,
-         apply_changes/1,
-         cast/3, cast/4,
-         validate/1,
-         validate_change/3
+         apply_changes/1, cast/3,
+         validate/1,validate_change/3
         ]).
 
 %%%=============================================================================
 %%% Properties
 %%%=============================================================================
 
-model(#{model := Value}) -> Value.
 errors(#{errors := Value}) -> Value.
 changes(#{changes := Value}) -> Value.
 is_valid(#{is_valid := Value}) -> Value.
@@ -59,13 +55,13 @@ apply_changes(#{changes := Changes, data := Data, types := Types}) ->
   end, Data, Changes).
 
 %% 对已经存在的changeset进行二次变更
-cast(#{model := ModelName, store := Store, data := Data, types := Types} = CS, Params, Allowed) ->
-  NewChangeset = do_cast({ModelName, Store, Data, Types}, Params, Allowed),
-  cast_merge(CS, NewChangeset).
+cast(#{model := Model, data := Data, types := Types, attrs := Attrs} = CS, Params, Allowed) ->
+  NewChangeset = do_cast(Model,{Data,Types,Attrs}, Params, Allowed),
+  cast_merge(CS, NewChangeset);
 %% 给某个模型进行变更，构建changeset
-cast(ModelName, Fields, Params, Allowed) ->
-  Metadata = get_metadata(ai_db_model:new(ModelName, Fields)),
-  do_cast(Metadata, Params, Allowed).
+cast(Model,Params, Allowed) ->
+  Metadata = get_metadata(Model),
+  do_cast(Model,Metadata, Params, Allowed).
 
 
 get_field(Changeset, Key) -> get_field(Changeset, Key, undefined).
@@ -200,7 +196,7 @@ validate_format(Changeset, Field, Format) ->
 %%%=============================================================================
 %% Params 是map
 %% Allowed 是list
-do_cast({ModelName, Store, Data, Types,Attrs}, Params, Allowed) ->
+do_cast(Model,{Data, Types,Attrs}, Params, Allowed) ->
   NewParams = convert_params(Params),
   FilteredParams =
     case Allowed of
@@ -208,14 +204,14 @@ do_cast({ModelName, Store, Data, Types,Attrs}, Params, Allowed) ->
       _ -> maps:with(Allowed, NewParams)
     end,
     %% 生成Changes，错误和是否验证
-  {Changes, Errors, IsValid} = maps:fold(
-                                 fun(ParamKey, ParamVal, Acc) ->
-                                     process_param(ParamKey, ParamVal, Types, Acc)
-                                 end, {#{}, [], true}, FilteredParams),
+  {Changes, Errors, IsValid} =
+    maps:fold(
+      fun(ParamKey, ParamVal, Acc) ->
+          process_param(ParamKey, ParamVal, Types, Acc)
+      end, {#{}, [], true}, FilteredParams),
   %% 生成changeset
   (changeset())#{
-                 model   := ModelName,
-                 store    := Store,
+                 model   := Model,
                  data     := Data,
                  params   := FilteredParams,
                  changes  := Changes,
@@ -227,7 +223,6 @@ do_cast({ModelName, Store, Data, Types,Attrs}, Params, Allowed) ->
 
 changeset() ->
   #{model    => undefined,
-    store    => undefined,
     data     => undefined,
     params   => undefined,
     errors   => [],
@@ -237,18 +232,11 @@ changeset() ->
     attrs => undefined,
     required => []}.
 
-store_attr(ModelName)->
-  Key = {ModelName,store},
-  Fun = fun() -> ai_db_manager:store(ModelName) end,
-  ai_process:get(Key,Fun).
-
 get_metadata(Model) ->
-  ModelName = ai_db_model:name(Model),
-  Store = store_attr(ModelName),
   Data = ai_db_model:fields(Model),
   Module = ai_db_model:module(Model),
   {Types,Attrs} = fields_info(Module:schema()),
-  {ModelName, Store, Data, Types,Attrs}.
+  {Data,Types,Attrs}.
 
 fields_info(Schema) ->
   lists:foldl(fun(F, {T,A}) ->

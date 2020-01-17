@@ -6,22 +6,24 @@
          new/1,
          new/2,
          get_field/2,
-         set_field/3
+         set_field/3,
+         is_new/1,
+         is_dirty/1,
+         persist/1
         ]).
--export([wakeup/1,sleep/2]).
 -export([build/2,build/3]).
 -compile({inline,[build_fields/2]}).
 
 -spec build(atom(),map()) -> map().
 build(ModelName,Input)->
   EntityFields = build_fields(ModelName, Input),
-  new(ModelName,EntityFields).
+  new(ModelName,EntityFields,persist).
 
 -spec build(atom(),[atom()],map()) -> map().
 build(ModelName,Allowed,Input)->
   EntityFields = build_fields(ModelName, Input),
   FilteredEntityFields = maps:with(Allowed,EntityFields),
-  new(ModelName,FilteredEntityFields).
+  new(ModelName,FilteredEntityFields,persist).
 
 build_fields(ModelName,Input)->
   Schema = ai_db_schema:schema(ModelName),
@@ -50,8 +52,11 @@ fields(Model) -> maps:get(fields, Model, #{}).
 get_field(Name,Model) -> maps:get(Name,fields(Model), undefined).
 
 -spec set_field(atom(),term(),map()) -> map().
-set_field(FieldName, FieldValue, Model = #{fields := Fields}) ->
-  maps:put(fields, maps:put(FieldName, FieldValue, Fields), Model);
+set_field(FieldName, FieldValue,
+          Model = #{fields := Fields, attrs := Attr}) ->
+  Fields0 = maps:put(FieldName, FieldValue, Fields),
+  Attr0 = sets:add_element(dirty,Attr),
+  Model#{fields => Fields0, attrs => Attr0};
 set_field(FieldName, FieldValue, Fields) ->
   maps:put(FieldName, FieldValue, Fields).
 
@@ -59,28 +64,29 @@ set_field(FieldName, FieldValue, Fields) ->
 new(ModelName) -> new(ModelName, #{}).
 
 -spec new(atom(),map()) -> map().
-new(ModelName, Fields) ->
-  Module = module_attr(ModelName),
-  #{name => ModelName, module => Module, fields => Fields}.
+new(ModelName, Fields) -> new(ModelName,Fields,new).
 
--spec wakeup(map()) -> term().
-wakeup(Model) ->
-  Module = module(Model),
-  Fields = fields(Model),
-  Module:wakeup(Fields).
+persist(#{attrs := Attr} = Model)->
+  Attr0 = sets:del_element(new,Attr),
+  Model#{attrs => Attr0}.
 
--spec sleep(atom(),term()) -> map().
-sleep(Name,Entity)->
-  Module = module_attr(Name),
-  Fields = Module:sleep(Entity),
-  #{name => Name, module => Module, fields => Fields}.
+is_new(Model) -> is(new,Model).
+is_dirty(Model) -> is(dirty,Model).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec module_attr(atom()) -> atom().
 module_attr(ModelName)->
   Key = {ModelName,module},
   Fun = fun() ->
             ai_db_manager:attr_value(ModelName, module)
         end,
   ai_process:get(Key,Fun).
+
+is(What, #{attrs := Attributes}) -> sets:is_element(What,Attributes).
+
+new(ModelName,Fields,NewOrPersist)->
+  Module = module_attr(ModelName),
+  Attrs = sets:new(),
+  #{name => ModelName, module => Module, fields => Fields,
+    attrs => sets:add_element(NewOrPersist,Attrs)}.
