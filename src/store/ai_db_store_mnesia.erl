@@ -2,9 +2,9 @@
 
 %% API
 -export([count/2, count_by/3, delete_all/2, delete_by/3,
-	 dirty/2, fetch/3, find_all/2, find_all/5, find_by/3,
-	 find_by/5, find_by/6, init/1, persist/2,
-	 transaction/2]).
+         dirty/2, fetch/3, find_all/2, find_all/5, find_by/3,
+         find_by/5, find_by/6, init/1, persist/2,
+         transaction/2]).
 
 -record(state, {verbose}).
 
@@ -49,25 +49,27 @@ persist(Model, State) ->
     end.
 
 fetch(ModelName, ID, State) ->
-    try [Result] = mnesia:dirty_read(ModelName, ID),
-         Schema = ai_db_schema:schema(ModelName),
-         Fields = schema_field_names(Schema),
-         _ = maybe_log(fetch, [ModelName, ID], State),
-	{{ok,
-	  ai_db_transform:model(fun wakeup/4,
-                            result_to_model(Result, Fields))},
-	 State}
+    try
+        [Result] = mnesia:dirty_read(ModelName, ID),
+        Schema = ai_db_schema:schema(ModelName),
+        Fields = schema_field_names(Schema),
+        _ = maybe_log(fetch, [ModelName, ID], State),
+        Model = ai_db_model:persist(
+                  ai_db_transform:model(fun wakeup/4,
+                                        result_to_model(Result, Fields))),
+        {{ok,Model},State}
     catch
-      _:_ -> {{error, not_found}, State}
+        _:_ -> {{error, not_found}, State}
     end.
 
 delete_by(ModelName, Conditions, State) ->
     MatchSpec = build_match_spec(ModelName, Conditions),
-    Transaction = fun () ->
-			  Items = mnesia:select(ModelName, MatchSpec),
-                          lists:foreach(fun mnesia:delete_object/1, Items),
-                          erlang:length(Items)
-                  end,
+    Transaction =
+        fun () ->
+                Items = mnesia:select(ModelName, MatchSpec),
+                lists:foreach(fun mnesia:delete_object/1, Items),
+                erlang:length(Items)
+        end,
     case mnesia:transaction(Transaction) of
         {aborted, Reason} -> {{error, Reason}, State};
         {atomic, Result} ->
@@ -78,10 +80,10 @@ delete_by(ModelName, Conditions, State) ->
 delete_all(ModelName, State) ->
     Count = mnesia:table_info(ModelName, size),
     case mnesia:clear_table(ModelName) of
-      {atomic, ok} ->
-	  _ = maybe_log(delete_all, [ModelName], State),
-	  {{ok, Count}, State};
-      {aborted, Reason} -> {{error, Reason}, State}
+        {atomic, ok} ->
+            _ = maybe_log(delete_all, [ModelName], State),
+            {{ok, Count}, State};
+        {aborted, Reason} -> {{error, Reason}, State}
     end.
 
 find_all(ModelName, State) ->
@@ -97,57 +99,64 @@ find_by(ModelName, Conditions, Limit, Offset, State) ->
     find_by(ModelName, Conditions, [], Limit, Offset,State).
 
 find_by(ModelName, Conditions, [], Limit, Offset,State) ->
-  MatchSpec = build_match_spec(ModelName, Conditions),
-  Transaction0 = fun () ->
-		mnesia:select(ModelName, MatchSpec)
-	end,
-  TransactionL = fun () ->
-    case mnesia:select(ModelName, MatchSpec, Offset + Limit, read) of
-			{ManyItems, _Cont} when length(ManyItems) >= Offset ->
-				lists:sublist(ManyItems, Offset + 1, Limit);
-			{_ManyItems, _Cont} -> [];
-			  '$end_of_table' -> []
-		end
-	end,
-  Transaction = 
-    case Limit of
-		  0 -> Transaction0;
-		  Limit -> TransactionL
+    MatchSpec = build_match_spec(ModelName, Conditions),
+    Transaction0 =
+        fun () ->
+                mnesia:select(ModelName, MatchSpec)
+        end,
+    TransactionL =
+        fun () ->
+                case mnesia:select(ModelName, MatchSpec, Offset + Limit, read) of
+                    {ManyItems, _Cont} when length(ManyItems) >= Offset ->
+                        lists:sublist(ManyItems, Offset + 1, Limit);
+                    {_ManyItems, _Cont} -> [];
+                    '$end_of_table' -> []
+                end
+        end,
+    Transaction =
+        case Limit of
+            0 -> Transaction0;
+            Limit -> TransactionL
 		end,
-  case mnesia:transaction(Transaction) of
-    {aborted, Reason} -> {{error, Reason}, State};
-    {atomic, Results} ->
-	    Schema = ai_db_schema:schema(ModelName),
-	    Fields = schema_field_names(Schema),
-	    Models = [ai_db_transform:model(fun wakeup/4,result_to_model(Result, Fields))
-		    || Result <- Results],
-	    _ = maybe_log(find_by,
-			  [ModelName, Conditions, Limit, Offset, MatchSpec],
-		  	State),
-	    {{ok, Models}, State}
-  end;
+    case mnesia:transaction(Transaction) of
+        {aborted, Reason} -> {{error, Reason}, State};
+        {atomic, Results} ->
+            Schema = ai_db_schema:schema(ModelName),
+            Fields = schema_field_names(Schema),
+            Models = [
+                      ai_db_model:persist(
+                        ai_db_transform:model(fun wakeup/4,
+                                              result_to_model(Result, Fields)))
+                      || Result <- Results],
+            _ = maybe_log(find_by,
+                          [ModelName, Conditions, Limit, Offset, MatchSpec],
+                          State),
+            {{ok, Models}, State}
+    end;
 find_by(_ModelName, _Conditions, _Sort, _Limit, _Offset,State) ->
-  {{error, not_supported}, State}.
+    {{error, not_supported}, State}.
 
 count(ModelName, State) ->
-  try 
-    Size = mnesia:table_info(ModelName, size),
-	  {{ok, Size}, State}
-  catch
-    _:Reason -> {{error, Reason}, State}
-  end.
+    try
+        Size = mnesia:table_info(ModelName, size),
+        {{ok, Size}, State}
+    catch
+        _:Reason -> {{error, Reason}, State}
+    end.
 
 count_by(ModelName, Conditions, State) ->
     MatchSpec = build_match_spec(ModelName, Conditions),
-    Transaction = fun () ->
-			  erlang:length(mnesia:select(ModelName, MatchSpec))
-		  end,
+    Transaction =
+        fun () ->
+                erlang:length(mnesia:select(ModelName, MatchSpec))
+        end,
     case mnesia:transaction(Transaction) of
-      {aborted, Reason} -> {{error, Reason}, State};
-      {atomic, Count} -> {{ok, Count}, State}
+        {aborted, Reason} -> {{error, Reason}, State};
+        {atomic, Count} -> {{ok, Count}, State}
     end.
 
-dirty(Fun, State) -> transaction(Fun, State).
+dirty(_Fun, State) ->
+    {{error, not_supported}, State}.
 
 transaction(Fun, State) ->
     case mnesia:transaction(Fun) of
@@ -210,7 +219,7 @@ build_match_spec(ModelName, Conditions) ->
     Schema = ai_db_schema:schema(ModelName),
     Fields = schema_field_names(Schema),
     FieldsMap = maps:from_list([field_tuple(I, Fields)
-				|| I <- lists:seq(1, erlang:length(Fields))]),
+                                || I <- lists:seq(1, erlang:length(Fields))]),
     % The following ordering function avoids '$10' been added between
     % '$1' and '$2' in the MatchHead list. Without this fix, this store
     % would fail when trying to use `find_by` function.
