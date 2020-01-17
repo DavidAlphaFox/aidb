@@ -80,7 +80,7 @@ cast(#{schema := Schema, store := Store, data := Data, types := Types} = CS, Par
   cast_merge(CS, NewChangeset).
 %% 给某个模型进行变更，构建changeset
 cast(SchemaName, Fields, Params, Allowed) ->
-  Metadata = get_metadata(ai_db_model:new_model(SchemaName, Fields)),
+  Metadata = get_metadata(ai_db_model:new(SchemaName, Fields)),
   do_cast(Metadata, Params, Allowed).
 
 change(#{changes := _, types := _} = Changeset, Changes) ->
@@ -88,20 +88,20 @@ change(#{changes := _, types := _} = Changeset, Changes) ->
   Changeset#{changes  := NewChanges}.
 
 change(SchemaName, Fields, Changes) ->
-    Doc  = ai_db_model:new_model(SchemaName, Fields),
+    Doc  = ai_db_model:new(SchemaName, Fields),
     {SchemaName, Store, Data, Types} = get_metadata(Doc),
     Changeset = (changeset())#{
-    schema   := SchemaName,
-    store    := Store,
-    data     := Data,
-    types    := Types
-  },
+                               schema   := SchemaName,
+                               store    := Store,
+                               data     := Data,
+                               types    := Types
+                              },
   NewChanges = changes(get_changed(Changeset, Changes)),
   Changeset#{changes  := NewChanges}.
 
 get_changed(Changeset, NewChanges) ->
     maps:fold(fun(K, V, Acc) ->
-                      put_change(Acc, K, V)
+                  put_change(Acc, K, V)
               end, Changeset, NewChanges).
 
 get_field(Changeset, Key) -> get_field(Changeset, Key, undefined).
@@ -179,22 +179,22 @@ validate_required(#{required := Required, errors := Errors} = CS, Fields) ->
 validate_inclusion(Changeset, Field, Enum) ->
   validate_change(Changeset, Field,
                   fun(_, Value) ->
-                          case lists:member(Value, Enum) of
-                              true  -> [];
-                              false -> [{Field, {invalid, [{validation, inclusion}]}}]
-                          end
+                      case lists:member(Value, Enum) of
+                        true  -> [];
+                        false -> [{Field, {invalid, [{validation, inclusion}]}}]
+                      end
                   end).
 
 validate_number(Changeset, Field, Opts) ->
     Fun =
         fun(TargetField, Value) ->
                 [ begin
-                      case maps:find(SpecKey, number_validators(TargetValue)) of
-                          {ok, {SpecFun, Message}} ->
-                              validate_number(TargetField, Value, Message, SpecFun, TargetValue);
-                          error ->
-                              error({badarg, SpecKey})
-                      end
+                    case maps:find(SpecKey, number_validators(TargetValue)) of
+                      {ok, {SpecFun, Message}} ->
+                        validate_number(TargetField, Value, Message, SpecFun, TargetValue);
+                      error ->
+                        error({badarg, SpecKey})
+                    end
                   end || {SpecKey, TargetValue} <- Opts]
           end,
   validate_change(Changeset,Field,Fun).
@@ -272,23 +272,23 @@ changeset() ->
     required => []}.
 
 get_metadata(Model) ->
-  SchemaName = ai_db_model:model_name(Model),
+  SchemaName = ai_db_model:name(Model),
   Store = ai_db_manager:store(SchemaName),
-  Data = ai_db_model:model_fields(Model),
-  Module = ai_db_model:model_module(Model),
+  Data = ai_db_model:fields(Model),
+  Module = ai_db_model:module(Model),
   Types = schema_types(Module:schema()),
   {SchemaName, Store, Data, Types}.
 
 schema_types(Schema) ->
   lists:foldl(fun(F, Acc) ->
-    maps:put(ai_db_schema:field_name(F), ai_db_schema:field_type(F), Acc)
-  end, #{}, ai_db_schema:schema_fields(Schema)).
+    maps:put(ai_db_field:name(F), ai_db_field:type(F), Acc)
+  end, #{}, ai_db_schema:fields(Schema)).
 
 convert_params(Params) ->
   maps:fold(fun
-    (K, V, Acc) when is_binary(K) ->
-                    maps:put(erlang:binary_to_existing_atom(K,utf8), V, Acc);
-    (K, _, Acc) when is_atom(K)   -> Acc
+              (K, V, Acc) when is_binary(K) ->
+                maps:put(erlang:binary_to_existing_atom(K,utf8), V, Acc);
+              (K, _, Acc) when is_atom(K)   -> Acc
   end, Params, Params).
 
 process_param(ParamKey, ParamValue, Types, {Changes, Errors, IsValid}) ->

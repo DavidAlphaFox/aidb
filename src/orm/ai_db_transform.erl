@@ -5,19 +5,21 @@
          conditions/4
         ]).
 
+-spec model(function(),map())-> [map()].
 model(Fun, Model) ->
-    ModelName = ai_db_model:model_name(Model),
+    ModelName = ai_db_model:name(Model),
     Schema = ai_db_schema:schema(ModelName),
-    SchemaFields = ai_db_schema:schema_fields(Schema),
+    SchemaFields = ai_db_schema:fields(Schema),
     lists:foldl(fun(Field, Acc) ->
-                        FieldType = ai_db_schema:field_type(Field),
-                        FieldName = ai_db_schema:field_name(Field),
+                        FieldType = ai_db_field:type(Field),
+                        FieldName = ai_db_field:name(Field),
                         FieldValue =  ai_db_model:get_field(FieldName, Model),
-                        FieldAttrs = ai_db_schema:field_attrs(Field),
+                        FieldAttrs = ai_db_field:attrs(Field),
                         NewValue = Fun(FieldType, FieldName, FieldValue, FieldAttrs),
                         ai_db_model:set_field(FieldName, NewValue, Acc)
                 end, Model, SchemaFields).
 
+-spec conditions(function(),atom(),[tuple()]| tuple(),atom()) -> list().
 conditions(Fun, ModelName, Conditions, FieldTypes) when is_list(Conditions) ->
   DTFields = filter_fields_by(ModelName, FieldTypes),
   lists:foldl(fun
@@ -46,29 +48,29 @@ conditions(Fun, ModelName, Conditions, FieldTypes) -> conditions(Fun, ModelName,
 
 filter_fields_by(ModelNameOrModel, FilteredFieldTypes)
   when is_atom(ModelNameOrModel) ->
-    filter_fields(ModelNameOrModel, undefined, FilteredFieldTypes);
+  filter_fields(ModelNameOrModel, undefined, FilteredFieldTypes);
 filter_fields_by(ModelNameOrModel, FilteredFieldTypes) ->
-    ModelName = ai_db_model:model_name(ModelNameOrModel),
-    filter_fields(ModelName, ModelNameOrModel, FilteredFieldTypes).
+  ModelName = ai_db_model:name(ModelNameOrModel),
+  filter_fields(ModelName, ModelNameOrModel, FilteredFieldTypes).
 
 
 filter_fields(ModelName, Model, FilteredFieldTypes) ->
-    Schema = ai_db_schema:schema(ModelName),
-    SchemaFields = ai_db_schema:schema_fields(Schema),
-    lists:foldl(fun(Field, Acc) ->
-                        FieldType = ai_db_schema:field_type(Field),
-                        case lists:member(FieldType, FilteredFieldTypes) of
-                            true -> [set_filter(Field, Model) | Acc];
-                            _    -> Acc
-                        end
-                end, [], SchemaFields).
+  Schema = ai_db_schema:schema(ModelName),
+  SchemaFields = ai_db_schema:fields(Schema),
+  lists:foldl(fun(Field, Acc) ->
+                  FieldType = ai_db_field:type(Field),
+                  case lists:member(FieldType, FilteredFieldTypes) of
+                    true -> [set_filter(Field, Model) | Acc];
+                    _    -> Acc
+                  end
+              end, [], SchemaFields).
 
 set_filter(Field, Model) ->
-    FieldType = ai_db_schema:field_type(Field),
-    FieldName = ai_db_schema:field_name(Field),
-    FieldValue =
-        case Model /= undefined of
-            true -> ai_db_model:get_field(FieldName, Model);
-            _    -> undefined
-        end,
+  FieldType = ai_db_field:type(Field),
+  FieldName = ai_db_field:name(Field),
+  FieldValue =
+    case Model /= undefined of
+      true -> ai_db_model:get_field(FieldName, Model);
+      _    -> undefined
+    end,
   {FieldName, FieldType, FieldValue}.

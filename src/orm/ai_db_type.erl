@@ -4,12 +4,11 @@
 
 -export([cast/2]).
 
-is_datetime({_, _, _} = Date) ->
-    calendar:valid_date(Date);
+is_datetime({_, _, _} = Date) -> calendar:valid_date(Date);
 is_datetime({{_, _, _} = Date, {H, M, S}}) ->
-    calendar:valid_date(Date) and (H >= 0 andalso H =< 23)
-      and (M >= 0 andalso M =< 59)
-      and (S >= 0 andalso S =< 59);
+  calendar:valid_date(Date) and (H >= 0 andalso H =< 23)
+    and (M >= 0 andalso M =< 59)
+    and (S >= 0 andalso S =< 59);
 is_datetime(_) -> false.
 
 cast(_, undefined) -> {ok, undefined};
@@ -19,10 +18,10 @@ cast(integer, Data) when is_float(Data) -> {ok, erlang:trunc(Data)};
 cast(integer, Data) when is_list(Data) orelse is_binary(Data) -> cast_integer(Data);
 cast(Type, Data)
   when is_list(Data), Type /= binary, Type /= custom ->
-    cast(Type, ai_string:to_string(Data));
+  cast(Type, ai_string:to_string(Data));
 cast(string, Data)
   when is_binary(Data); is_atom(Data); is_number(Data) ->
-    {ok, ai_string:to_string(Data)};
+  {ok, ai_string:to_string(Data)};
 cast(boolean, Data) when is_binary(Data) ->
   BinData = ai_string:to_string(Data),
   case lists:member(BinData, [<<"true">>, <<"1">>]) of
