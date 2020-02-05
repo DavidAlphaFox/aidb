@@ -11,35 +11,50 @@
          persist/1
         ]).
 -export([build/2,build/3]).
--compile({inline,[build_fields/2]}).
+-compile({inline,[build/4]}).
 
--spec build(atom(),map()) -> map().
+-spec build(atom()|map(),map()) -> map().
+build(Schema,Input) when erlang:is_map(Schema)->
+  ModelName = ai_db_schema:name(Schema),
+  Fields = ai_db_schema:fields(Schema),
+  build(ModelName,Fields,undefined,Input);
 build(ModelName,Input)->
-  EntityFields = build_fields(ModelName, Input),
-  new(ModelName,EntityFields).
-
--spec build(atom(),map(),[atom()]) -> map().
-build(ModelName,Input,Allowed)->
-  EntityFields = build_fields(ModelName, Input),
-  FilteredEntityFields = maps:with(Allowed,EntityFields),
-  new(ModelName,FilteredEntityFields).
-
-build_fields(ModelName,Input)->
   Schema = ai_db_schema:schema(ModelName),
   Fields = ai_db_schema:fields(Schema),
-  lists:foldl(
-    fun(#{name := Key},Acc)->
-        case maps:get(Key,Input,undefined) of
-          undefined ->
-            KeyBin = ai_string:to_string(Key),
-            case maps:get(KeyBin,Input,undefined) of
-              undefined -> Acc;
-              Value -> Acc#{Key => Value}
-            end;
-          Value -> Acc#{Key => Value}
-        end
-    end,#{},Fields).
+  build(ModelName,Fields,undefined,Input).
 
+-spec build(atom()|map(),[atom()],map()) -> map().
+build(Schema,Allowed,Input) when erlang:is_map(Schema)->
+  ModelName = ai_db_schema:name(Schema),
+  Fields = ai_db_schema:fields(Schema),
+  build(ModelName,Fields,Allowed,Input);
+build(ModelName,Allowed,Input)->
+  Schema = ai_db_schema:schema(ModelName),
+  Fields = ai_db_schema:fields(Schema),
+  build(ModelName,Fields,Allowed,Input).
+  
+build(ModelName,Fields,Allowed,Input)->
+  EntityFields = 
+    lists:foldl(
+      fun(#{name := Key},Acc)->
+          case maps:get(Key,Input,undefined) of
+            undefined ->
+              KeyBin = ai_string:to_string(Key),
+              case maps:get(KeyBin,Input,undefined) of
+                undefined -> Acc;
+                Value -> Acc#{Key => Value}
+              end;
+            Value -> Acc#{Key => Value}
+          end
+      end,#{},Fields),
+  FilteredEntityFields =
+    if
+      Allowed == undefined -> EntityFields;
+      true -> maps:with(Allowed,EntityFields)
+    end,
+  new(ModelName,FilteredEntityFields).
+
+  
 -spec name(map()) -> atom().
 name(Model) -> maps:get(name, Model, undefined).
 -spec module(map()) -> atom().
