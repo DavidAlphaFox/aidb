@@ -18,15 +18,15 @@ name(Schema) -> maps:get(name, Schema, undefined).
 fields(Schema) -> maps:get(fields, Schema, []).
 
 schema(ModelName) ->
-  Key = {ModelName,schema},
+  CacheKey = {ai_db,ModelName,schema},
   Fun = fun() ->
             Module = module_attr(ModelName),
             Module:schema()
         end,
-  ai_process:get(Key,Fun).
+  ai_process:get(CacheKey,Fun).
   
 id(#{name := ModelName,fields := Fields}) ->
-  Key = {ModelName,id_field},
+  CacheKey = {ai_db,ModelName,id_field},
   Fun = fun() ->
             case
               lists:filter(fun(_Field = #{attrs := Attributes}) ->
@@ -36,7 +36,7 @@ id(#{name := ModelName,fields := Fields}) ->
               [IDField] -> IDField
             end
         end,
-  ai_process:get(Key,Fun).
+  ai_process:get(CacheKey,Fun).
 
 id(Schema,name)->
   Field = id(Schema),
@@ -50,8 +50,8 @@ id(Schema,type) ->
 %%% Internal functions
 %%%===================================================================
 module_attr(ModelName)->
-  Key = {ModelName,module},
+  CacheKey = {ai_db,ModelName,module},
   Fun = fun() ->
             ai_db_manager:attr_value(ModelName, module)
         end,
-  ai_process:get(Key,Fun).
+  ai_process:get(CacheKey,Fun).

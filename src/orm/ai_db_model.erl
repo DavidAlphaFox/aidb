@@ -74,10 +74,10 @@ is_new(Model) -> is(new,Model).
 %%% Internal functions
 %%%===================================================================
 module_attr(ModelName)->
-  Key = {ModelName,module},
+  CacheKey = {ai_db,ModelName,module},
   Fun = fun() ->
             ai_db_manager:attr_value(ModelName, module)
         end,
-  ai_process:get(Key,Fun).
+  ai_process:get(CacheKey,Fun).
 
 is(What, #{attrs := Attributes}) -> proplists:is_defined(What,Attributes).
