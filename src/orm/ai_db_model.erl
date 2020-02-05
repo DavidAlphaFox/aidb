@@ -37,14 +37,18 @@ build(ModelName,Fields,Allowed,Input)->
   EntityFields = 
     lists:foldl(
       fun(#{name := Key},Acc)->
-          case maps:get(Key,Input,undefined) of
-            undefined ->
+          case maps:is_key(Key,Input) of
+            false ->
               KeyBin = ai_string:to_string(Key),
-              case maps:get(KeyBin,Input,undefined) of
-                undefined -> Acc;
-                Value -> Acc#{Key => Value}
+              case maps:is_key(KeyBin,Input) of
+                false -> Acc;
+                true ->
+                  Value = maps:get(KeyBin,Input),
+                  Acc#{Key => Value}
               end;
-            Value -> Acc#{Key => Value}
+            true ->
+              Value = maps:get(Key,Input),
+              Acc#{Key => Value}
           end
       end,#{},Fields),
   FilteredEntityFields =
