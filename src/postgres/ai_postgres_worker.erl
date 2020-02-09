@@ -71,6 +71,8 @@ error_message({error,Error})
 error_message({error,{error,Error}})
   when erlang:is_record(Error, error) ->
   {error,sql_error(Error)};
+error_message({error,{error,Error}})->
+  {error,Error};
 error_message(Error)
   when erlang:is_record(Error, error) ->
   {error,sql_error(Error)};
