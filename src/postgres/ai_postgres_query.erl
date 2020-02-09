@@ -6,7 +6,7 @@
 -spec delete(Table::atom() | binary(),
              Conditions::list()) -> tuple().
 delete(Table, Conditions) ->
-    TableName = ai_postgres_utils:escape_field(Table),
+    TableName = ai_postgres_escape:escape_field(Table),
     {_Select, Where, Values} = form_select_query([], Conditions,undefined),
     WhereClause =
         case erlang:byte_size(Where) of
@@ -21,13 +21,13 @@ delete(Table, Conditions) ->
 update(Table,Columns,Conditions) when erlang:is_map(Columns)->
     update(Table,maps:to_list(Columns),Conditions);
 update(Table,Columns,Conditions)->
-    TableName = ai_postgres_utils:escape_field(Table),
+    TableName = ai_postgres_escape:escape_field(Table),
     {_Select, Where, Values} = form_select_query([], Conditions, undefined),
     {_,UFields, UValues} =
         lists:foldr(
           fun({K, V}, {Index,Fs, Vs}) ->
                   IndexBin = erlang:integer_to_binary(Index),
-                  FieldName = ai_postgres_utils:escape_field(K),
+                  FieldName = ai_postgres_escape:escape_field(K),
                   Slot = <<FieldName/binary, " = $", IndexBin/binary>>,
                   {Index+1,[Slot|Fs],[V|Vs]}
           end, {erlang:length(Values) + 1,[], []}, Columns),
@@ -45,12 +45,12 @@ update(Table,Columns,Conditions)->
 insert(Table,IDColumnName,Columns) when erlang:is_map(Columns)->
     insert(Table,IDColumnName,maps:to_list(Columns));
 insert(Table,IDColumnName,Columns) ->
-    IDColumnName0 = ai_postgres_utils:escape_field(IDColumnName),
-    TableName = ai_postgres_utils:escape_field(Table),
+    IDColumnName0 = ai_postgres_escape:escape_field(IDColumnName),
+    TableName = ai_postgres_escape:escape_field(Table),
     {Fields, Values} =
         lists:foldr(
           fun({K, V}, {Fs, Vs}) ->
-                  {[ai_postgres_utils:escape_field(K)|Fs], [V|Vs]}
+                  {[ai_postgres_escape:escape_field(K)|Fs], [V|Vs]}
           end, {[], []}, Columns),
 
     SlotsFun = fun(N) -> NBin = erlang:integer_to_binary(N), <<"$",NBin/binary>>  end,
@@ -72,13 +72,13 @@ count(Table,Conditions) -> count(Table,Conditions,undefined).
 count(Table,Conditions,ExtraWhere) ->
     {_Select, Where, Values} =
         form_select_query([], Conditions, ExtraWhere),
-    TableName = ai_postgres_utils:escape_field(Table),
+    TableName = ai_postgres_escape:escape_field(Table),
     WhereClause =
         case erlang:byte_size(Where) of
             0 -> <<>>;
             _ -> <<" WHERE ", Where/binary>>
         end,
-    TableName = ai_postgres_utils:escape_field(Table),
+    TableName = ai_postgres_escape:escape_field(Table),
     Sql = <<"SELECT COUNT(*) AS total FROM ", TableName/binary,WhereClause/binary>>,
     {Sql,Values}.
 
@@ -122,7 +122,7 @@ select(Table, SelectColumns,Conditions, ExtraWhere,
             0 -> <<>>;
             _ -> <<" WHERE ", Where/binary>>
         end,
-    TableName = ai_postgres_utils:escape_field(Table),
+    TableName = ai_postgres_escape:escape_field(Table),
     Sql1 = <<"SELECT ",Select/binary, " FROM ", TableName/binary,
              WhereClause/binary," ",OrderByClause/binary>>,
     Sql2 =
@@ -144,7 +144,7 @@ select(Table, SelectColumns,Conditions, ExtraWhere,
 form_select_query(SelectColumns, Conditions, ExtraWhere) ->
     {Values, CleanConditions} = ai_postgres_clause:prepare_conditions(Conditions),
     WhereTmp = ai_postgres_clause:where(CleanConditions),
-    SFields = [ai_postgres_utils:escape_field(F) || F <- SelectColumns],
+    SFields = [ai_postgres_escape:escape_field(F) || F <- SelectColumns],
     Where =
         case ExtraWhere of
             undefined -> WhereTmp;

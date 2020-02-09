@@ -1,17 +1,17 @@
 -module(ai_postgres_utils).
-
--export([
-         slot_numbered/1,
-         escape_field/1,
-         escape_value/1,
-         escape_operator/1
-        ]).
-
+-compile({inline,[
+                  read_after_insert/3,
+                  read_after_update/3
+                 ]}).
 -export([
          rows_to_proplists/2,
          rows_to_map/2,
          rows_to_proplists/3,
          rows_to_map/3
+        ]).
+-export([
+         read_after_insert/3,
+         read_after_update/3
         ]).
 -include_lib("epgsql/include/epgsql.hrl").
 
@@ -43,51 +43,29 @@ rows_to_map(Columns,Rows,ColumnType)->
     lists:map(RowFun, Rows).
 
 
+read_after_insert(Conn,InsertFun,ReadFun)->
+  {InsertQuery,InsertValues} = InsertFun(),
+  case epgsql:equery(Conn, InsertQuery, InsertValues) of
+    {ok,Count,Cols,Rows} ->
+      if Count == 1 ->
+          {ReadQuery,ReadValues} = ReadFun(Cols,Rows),
+          epgsql:equery(Conn,ReadQuery,ReadValues);
+         true -> error(not_persist)
+      end;
+    Error -> error(Error)
+  end.
 
--spec slot_numbered({Prefix::char(),N::iodata()})->binary().
-slot_numbered({Prefix, N}) ->
-    P = ai_string:to_string(Prefix),
-    H = ai_string:to_string(N),
-    <<$\s,P/binary,H/binary,$\s>>.
-
-escape_field({raw,Field})-> Field;
-escape_field({raw_as,Field,ASField})->
-    AF = escape_field(ASField),
-    <<Field/binary," AS ",AF/binary>>;
-escape_field({as,Field,ASField})->
-    F = escape_field(Field),
-    AF = escape_field(ASField),
-    <<F/binary," AS ",AF/binary>>;
-escape_field({Prefix,Column})->
-    PrefixBin = ai_string:to_string(Prefix),
-    ColumnBin = escape_field(Column),
-    <<PrefixBin/binary,".",ColumnBin/binary>>;
-escape_field(Field) ->
-    F = ai_string:to_string(Field),
-    if
-        F == <<"*">> -> F;
-        true->
-            F1 = re:replace(F,"\"","\\\"",[global,{return,binary}]),
-            <<"\"",F1/binary,"\"">>
-    end.
-
-escape_value(Value)->
-    F = ai_string:to_string(Value),
-    case binary:match(F,<<"'">>) of
-        nomatch ->  <<"",F,"'">>;
-        _->
-            F1 = re:replace(F,"'","\\'",[global,{return,binary}]),
-            <<"E'",F1,"'">>
-    end.
-
-escape_operator('=<') -> <<" <= ">>;
-escape_operator('/=') -> <<" != ">>;
-escape_operator('==') -> <<" = ">>;
-escape_operator(Op) ->
-    OpBin = ai_string:to_string(Op),
-    <<$\s,OpBin/binary,$\s>>.
-
-
+read_after_update(Conn,UpdateFun,ReadFun)->
+  {UpdateQuery,UpdateValues} = UpdateFun(),
+  case epgsql:equery(Conn, UpdateQuery, UpdateValues) of
+    {ok,Count} ->
+      if Count == 1 ->
+          {ReadQuery,ReadValues} = ReadFun(),
+          epgsql:equery(Conn,ReadQuery,ReadValues);
+         true -> error(not_persist)
+      end;
+    Error -> error(Error)
+  end.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================

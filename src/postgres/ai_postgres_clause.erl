@@ -71,32 +71,32 @@ where({'not', Expr}) ->
     BinaryClauses = where(Expr),
     <<" NOT ( ",BinaryClauses/binary," ) ">>;
 where({Op, Name, { '$', _ } = Slot}) ->
-    P = ai_postgres_utils:slot_numbered(Slot),
-    N = ai_postgres_utils:escape_field(Name),
-    O = ai_postgres_utils:escape_operator(Op),
+    P = ai_postgres_escape:slot_numbered(Slot),
+    N = ai_postgres_escape:escape_field(Name),
+    O = ai_postgres_escape:escape_operator(Op),
     <<N/binary,O/binary,P/binary>>;
 where({Op,Name1, {field,Name2}}) ->
-    N1 = ai_postgres_utils:escape_field(Name1),
-    N2 = ai_postgres_utils:escape_field(Name2),
-    O = ai_postgres_utils:escape_operator(Op),
+    N1 = ai_postgres_escape:escape_field(Name1),
+    N2 = ai_postgres_escape:escape_field(Name2),
+    O = ai_postgres_escape:escape_operator(Op),
     <<N1/binary,O/binary,N2/binary>>;
 where({Name, null}) ->
-    N = ai_postgres_utils:escape_field(Name),
+    N = ai_postgres_escape:escape_field(Name),
     <<N/binary," IS NULL ">>;
 where({Name, not_null})->
-    N = ai_postgres_utils:escape_field(Name),
+    N = ai_postgres_escape:escape_field(Name),
     <<N/binary," IS NOT NULL ">>;
 where({Name1, {field,Name2}}) ->
-    N1 = ai_postgres_utils:escape_field(Name1),
-    N2 = ai_postgres_utils:escape_field(Name2),
+    N1 = ai_postgres_escape:escape_field(Name1),
+    N2 = ai_postgres_escape:escape_field(Name2),
     <<N1/binary," = ",N2/binary>>;
 where({Name,{'$',_} = Slot}) ->
-    N = ai_postgres_utils:escape_field(Name),
-    P = ai_postgres_utils:slot_numbered(Slot),
+    N = ai_postgres_escape:escape_field(Name),
+    P = ai_postgres_escape:slot_numbered(Slot),
     <<N/binary," = ",P/binary>>;
 where({Name,Value}) ->
-    N = ai_postgres_utils:escape_field(Name),
-    V = ai_postgres_utils:escape_value(Value),
+    N = ai_postgres_escape:escape_field(Name),
+    V = ai_postgres_escape:escape_value(Value),
     <<N/binary," = ",V/binary>>.
 
 order_by(SortFields) ->
