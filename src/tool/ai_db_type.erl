@@ -23,11 +23,11 @@ cast(string, Data)
   when is_binary(Data); is_atom(Data); is_number(Data) ->
   {ok, ai_string:to_string(Data)};
 cast(boolean, Data) when is_binary(Data) ->
-  BinData = ai_string:to_string(Data),
-  case lists:member(BinData, [<<"true">>, <<"1">>]) of
+  BinData = string:lowercase(ai_string:to_string(Data)),
+  case lists:member(BinData, [<<"true">>, <<"1">>,<<"t">>]) of
     true -> {ok, true};
     false ->
-	    case lists:member(BinData, [<<"false">>, <<"0">>]) of
+	    case lists:member(BinData, [<<"false">>, <<"0">>,<<"f">>]) of
 	      true -> {ok, false};
 	      false -> {error, {invalid, Data}}
 	    end
