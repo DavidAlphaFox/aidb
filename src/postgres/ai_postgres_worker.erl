@@ -1,8 +1,7 @@
 -module(ai_postgres_worker).
-
+-compile({inline,[error_message/1]}).
 
 -export([init/1]).
-
 -export([
          dirty/2,
          transaction/2
@@ -18,7 +17,7 @@ dirty(Fun,State)->
         {ok,Conn,NewState}->
             try
                 R =  Fun(Conn),
-                {R,NewState}
+                {error_message(R),NewState}
             catch
                 _Type:Reason->
                     catch epgsql:close(Conn),
@@ -32,7 +31,7 @@ transaction(Fun,State) ->
         {ok,Conn,NewState}->
             try
                 R = epgsql:with_transaction(Conn,Fun,[{ensure_committed,false},{reraise,true}]),
-                {R,NewState}
+                {error_message(R),NewState}
             catch
                 _Type:Reason->
                     catch epgsql:close(Conn),
@@ -63,6 +62,18 @@ connect(#state{conn = Conn} = State) when is_pid(Conn) ->
 connect(#state{conn = undefined, args = Args} = State) ->
     case epgsql:connect(Args) of
         {ok, Conn} -> {ok, Conn,State#state{conn = Conn}};
-        Error -> {Error,State}
+        Error -> {error_message(Error),State}
     end.
 
+error_message(E)->
+    case E of
+        {error,Error}
+          when erlang:is_record(Error, error) ->
+            {error,#{
+                     severity => Error#error.severity,
+                     code => Error#error.code,
+                     codename => Error#error.codename,
+                     message => Error#error.message
+                    }};
+        _ -> E
+    end.
