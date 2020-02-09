@@ -13,32 +13,32 @@
 init(Args) -> {ok,#state{conn = undefined, args=Args}}.
 
 dirty(Fun,State)->
-    case connect(State) of
-        {ok,Conn,NewState}->
-            try
-                R =  Fun(Conn),
-                {error_message(R),NewState}
-            catch
-                _Type:Reason->
-                    catch epgsql:close(Conn),
-                    {{error,Reason},NewState#state{conn = undefined}}
-            end;
-        Error -> Error
-    end.
+  case connect(State) of
+    {ok,Conn,NewState}->
+      try
+        R =  Fun(Conn),
+        {error_message(R),NewState}
+      catch
+        _Type:Reason->
+          catch epgsql:close(Conn),
+          {error_message({error,Reason}),NewState#state{conn = undefined}}
+      end;
+    Error -> Error
+  end.
 
 transaction(Fun,State) ->
-    case connect(State) of
-        {ok,Conn,NewState}->
-            try
-                R = epgsql:with_transaction(Conn,Fun,[{ensure_committed,false},{reraise,true}]),
-                {error_message(R),NewState}
-            catch
-                _Type:Reason->
-                    catch epgsql:close(Conn),
-                    {{error,Reason},NewState#state{conn = undefined}}
-            end;
-        Error-> Error
-    end.
+  case connect(State) of
+    {ok,Conn,NewState}->
+      try
+        R = epgsql:with_transaction(Conn,Fun,[{ensure_committed,false},{reraise,true}]),
+        {error_message(R),NewState}
+      catch
+        _Type:Reason->
+          catch epgsql:close(Conn),
+          {error_message({error,Reason}),NewState#state{conn = undefined}}
+      end;
+    Error-> Error
+  end.
 
 %%%===================================================================
 %%% Internal functions
@@ -65,15 +65,21 @@ connect(#state{conn = undefined, args = Args} = State) ->
         Error -> {error_message(Error),State}
     end.
 
-error_message(E)->
-    case E of
-        {error,Error}
-          when erlang:is_record(Error, error) ->
-            {error,#{
-                     severity => Error#error.severity,
-                     code => Error#error.code,
-                     codename => Error#error.codename,
-                     message => Error#error.message
-                    }};
-        _ -> E
-    end.
+error_message({error,Error})
+  when erlang:is_record(Error, error) ->
+  {error,sql_error(Error)};
+error_message({error,{error,Error}})
+  when erlang:is_record(Error, error) ->
+  {error,sql_error(Error)};
+error_message(Error)
+  when erlang:is_record(Error, error) ->
+  {error,sql_error(Error)};
+error_message(Error)-> Error.
+
+sql_error(Error)->
+  #{
+    severity => Error#error.severity,
+    code => Error#error.code,
+    codename => Error#error.codename,
+    message => Error#error.message
+   }.

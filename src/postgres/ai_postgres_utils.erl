@@ -52,7 +52,7 @@ read_after_insert(Conn,InsertFun,ReadFun)->
           epgsql:equery(Conn,ReadQuery,ReadValues);
          true -> error(not_persist)
       end;
-    Error -> error(Error)
+    {error,Error} -> error(Error)
   end.
 
 read_after_update(Conn,UpdateFun,ReadFun)->
@@ -64,7 +64,7 @@ read_after_update(Conn,UpdateFun,ReadFun)->
           epgsql:equery(Conn,ReadQuery,ReadValues);
          true -> error(not_persist)
       end;
-    Error -> error(Error)
+    {error,Error} -> error(Error)
   end.
 %%%===================================================================
 %%% Internal functions
