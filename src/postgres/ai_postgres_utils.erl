@@ -1,16 +1,25 @@
 -module(ai_postgres_utils).
--export([slot_numbered/1,escape_field/1,escape_value/1]).
--export([escape_operator/1]).
 
--export([rows_to_proplists/2,rows_to_map/2]).
--export([rows_to_proplists/3,rows_to_map/3]).
+-export([
+         slot_numbered/1,
+         escape_field/1,
+         escape_value/1,
+         escape_operator/1
+        ]).
+
+-export([
+         rows_to_proplists/2,
+         rows_to_map/2,
+         rows_to_proplists/3,
+         rows_to_map/3
+        ]).
 -include_lib("epgsql/include/epgsql.hrl").
 
 
 rows_to_proplists(Columns,Rows)->
-    rows_to_proplists(Columns,Rows,binary).
+    rows_to_proplists(Columns,Rows,atom).
 rows_to_map(Columns,Rows)->
-    rows_to_map(Columns,Rows,binary).
+    rows_to_map(Columns,Rows,atom).
 
 rows_to_proplists(Columns,Rows,ColumnType)->
     ColFun = column(ColumnType),
@@ -34,6 +43,8 @@ rows_to_map(Columns,Rows,ColumnType)->
     lists:map(RowFun, Rows).
 
 
+
+-spec slot_numbered({Prefix::char(),N::iodata()})->binary().
 slot_numbered({Prefix, N}) ->
     P = ai_string:to_string(Prefix),
     H = ai_string:to_string(N),
@@ -75,7 +86,6 @@ escape_operator('==') -> <<" = ">>;
 escape_operator(Op) ->
     OpBin = ai_string:to_string(Op),
     <<$\s,OpBin/binary,$\s>>.
-
 
 
 %%%===================================================================

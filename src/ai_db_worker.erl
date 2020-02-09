@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 22 Nov 2019 by David Gao <david@Davids-MacBook-Pro.local>
 %%%-------------------------------------------------------------------
--module(ai_db_store).
+-module(ai_db_worker).
 
 -behaviour(gen_server).
 
@@ -17,21 +17,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3, format_status/2]).
 
--export([
-         persist/2,
-         fetch/3,
-         delete_by/3,
-         delete_all/2,
-         find_all/2,
-         find_all/5,
-         find_by/3,
-         find_by/5,
-         find_by/6,
-         count/2,
-         count_by/3,
-         dirty/2,
-         transaction/2
-        ]).
 
 -define(SERVER, ?MODULE).
 
@@ -43,86 +28,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-persist(Name, Model) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{persist,Model})
-    end).
-fetch(Name, ModelName,ID) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{fetch,ModelName,ID})
-    end).
-delete_by(Name, ModelName, Conditions) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{delete_by, ModelName, Conditions})
-    end).
-delete_all(Name, ModelName) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{delete_all, ModelName})
-    end).
 
-find_all(Name, DocName) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{find_all, DocName})
-    end).
-find_all(Name, DocName, SortFields, Limit, Offset) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{find_all, DocName, SortFields, Limit, Offset})
-    end).
-find_by(Name, DocName, Conditions) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{find_by, DocName, Conditions})
-    end).
-find_by(Name, DocName, Conditions, Limit, Offset) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{find_by, DocName, Conditions, Limit, Offset})
-    end).
-find_by(Name, DocName, Conditions, SortFields, Limit, Offset) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker, {find_by, DocName, Conditions, SortFields, Limit, Offset})
-    end).
-count(Name, DocName) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker,{count, DocName})
-    end).
 
-count_by(Name, DocName, Conditions) ->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker, {count_by, DocName, Conditions})
-    end).
-dirty(Name,Fun)->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker, {dirty, Fun})
-    end).
-transaction(Name,Fun)->
-  ai_pool:transaction(
-    Name,
-    fun(Worker)->
-        gen_server:call(Worker, {transaction, Fun})
-    end).
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
