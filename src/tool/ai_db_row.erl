@@ -15,20 +15,20 @@ build(Fields,Input)-> build(Fields,Input,undefined).
 -spec build(Fields::map(),Input::map(),
             Allowed::list()|undefined) -> map().
 build(Fields,Input,Allowed)->
-  EntityFields =
-    maps:fold(
-      fun(Key,Attrs,Acc)->
-          case read_key(Key,Attrs,Input) of
-            {ok,Value} ->
-              CastValue = cast_value(Attrs,Value),
-              Acc#{Key => CastValue};
-            _ -> Acc
-          end
-      end,#{},Fields),
-  if
-    Allowed == undefined -> EntityFields;
-    true -> maps:with(Allowed,EntityFields)
-  end.
+  FilterdFields =
+    if
+      Allowed == undefined -> Fields;
+      true -> maps:with(Allowed,Fields)
+    end,
+  maps:fold(
+    fun(Key,Attrs,Acc)->
+        case read_key(Key,Attrs,Input) of
+          {ok,Value} ->
+            CastValue = cast_value(Attrs,Value),
+            Acc#{Key => CastValue};
+          _ -> Acc
+        end
+    end,#{},FilterdFields).
 
 read_key(Key,Attrs,Input)->
   case read_key(Key,Input) of
