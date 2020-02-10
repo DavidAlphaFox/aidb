@@ -79,7 +79,7 @@ count(Table,Conditions,ExtraWhere) ->
             _ -> <<" WHERE ", Where/binary>>
         end,
     TableName = ai_postgres_escape:escape_field(Table),
-    Sql = <<"SELECT COUNT(*) AS total FROM ", TableName/binary,WhereClause/binary>>,
+    Sql = <<"SELECT COUNT(*) AS count FROM ", TableName/binary,WhereClause/binary>>,
     {Sql,Values}.
 
 -spec select(Table::atom() | binary(),SelectColumns::list(),
