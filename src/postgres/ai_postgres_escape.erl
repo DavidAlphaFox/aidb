@@ -41,16 +41,16 @@ escape_field(Field) ->
     end.
 
 escape_value(Value)->
-    F = ai_string:to_string(Value),
-    case binary:match(F,<<"'">>) of
-        nomatch ->  <<"",F,"'">>;
-        _->
-            F1 = re:replace(F,"'","\\'",[global,{return,binary}]),
-            <<"E'",F1,"'">>
-    end.
+  F = ai_string:to_string(Value),
+  case binary:match(F,<<"'">>) of
+    nomatch ->  <<$',F/binary,$'>>;
+    _->
+      F1 = re:replace(F,"'","\\'",[global,{return,binary}]),
+      <<"E'",F1/binary,"'">>
+  end.
 
 escape_operator('=<') -> <<" <= ">>;
-escape_operator('/=') -> <<" != ">>;
+escape_operator('/=') -> <<" <> ">>;
 escape_operator('==') -> <<" = ">>;
 escape_operator(Op) ->
     OpBin = ai_string:to_string(Op),

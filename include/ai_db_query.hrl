@@ -16,5 +16,6 @@
          query :: term(),
          options :: list(),
          sql :: binary(),
-         bindings :: list()
+         bindings :: list(),
+         slot :: integer()
         }).

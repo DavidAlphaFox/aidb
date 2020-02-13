@@ -122,6 +122,8 @@ build(Query,Module,Options) ->
                query = Query,
                options = Options,
                sql = <<"">>,
-               bindings = []
+               bindings = [],
+               slot = 1
               },
-  Module:build(Context).
+  Context0 = Module:build(Context),
+  {Context0#ai_db_query_context.sql,Context0#ai_db_query_context.bindings}.
