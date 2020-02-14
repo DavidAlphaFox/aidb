@@ -4,6 +4,9 @@
 -export([
          new/0,
          select/3,
+         insert/3,
+         update/3,
+         delete/2,
          where/2,
          having/2,
          limit/2,
@@ -13,6 +16,7 @@
          join/5,
          group_by/2,
          order_by/2,
+         returning/2,
          build/1,
          build/2,
          build/3
@@ -26,6 +30,25 @@ select(Table,Fields,Query)->
     table = Table,
     fields = Fields
    }.
+
+insert(Table,Fields,Query)->
+  Query#ai_db_query{
+    action = insert,
+    table = Table,
+    fields = Fields
+   }.
+update(Table,Fields,Query)->
+  Query#ai_db_query{
+    action = update,
+    table = Table,
+    fields = Fields
+   }.
+delete(Table,Query)->
+  Query#ai_db_query{
+    action = delete,
+    table = Table
+   }.
+
 where(Cond,Query) when erlang:is_tuple(Cond)->
   where([Cond],Query);
 where(Cond,#ai_db_query{ where = undefined } = Query) ->
@@ -83,6 +106,14 @@ order_by(Fields,#ai_db_query{ order_by = OldOrderBy } = Query) ->
   Query#ai_db_query{
     order_by = OldOrderBy ++ Fields
    }.
+
+returning(Field,Query) when erlang:is_atom(Field)->
+  returning([Field],Query);
+returning(Fields,Query) ->
+  Query#ai_db_query{
+    returning = Fields
+   }.
+
 build(Query)->
   build(Query,ai_postgres_query_builder,[]).
 build(Query,Options)->

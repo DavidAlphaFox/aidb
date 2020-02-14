@@ -13,8 +13,18 @@ slot_numbered({Prefix, N}) ->
 
 escape_field({sql,raw,Field})-> Field;
 escape_field({sql,as,Field,ASField})->
-    AF = escape_field(ASField),
-    <<Field/binary," AS ",AF/binary>>;
+  AF = escape_field(ASField),
+  <<Field/binary," AS ",AF/binary>>;
+escape_field({proc,Proc,Field})->
+  Proc0 = ai_string:to_string(Proc),
+  F = escape_field(Field),
+  <<Proc0/binary, "(",F/binary,")">>;
+escape_field({proc,Proc,Field,Alias})->
+  Proc0 = ai_string:to_string(Proc),
+  F = escape_field(Field),
+  AF = escape_field(Alias),
+  <<Proc0/binary, "(",F/binary,") AS ",AF/binary>>;
+
 escape_field({as,Field,ASField})->
     F = escape_field(Field),
     AF = escape_field(ASField),

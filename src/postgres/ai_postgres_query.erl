@@ -1,4 +1,7 @@
 -module(ai_postgres_query).
+-include("ai_db_query.hrl").
+-export([build/1]).
+
 -export([select/3,select/4,select/6,select/7]).
 -export([count/1,count/2,count/3]).
 -export([insert/3,update/3,delete/2]).
@@ -156,3 +159,9 @@ form_select_query(SelectColumns, Conditions, ExtraWhere) ->
         end,
   Select = ai_string:join(SFields, <<",">>),
   {Select, Where, Values}.
+
+
+build(#ai_db_query_context{query = Query} = Ctx)->
+  build(Query#ai_db_query.action,Ctx).
+
+build(select,Ctx)-> ai_postgres_select_builder:build(Ctx).

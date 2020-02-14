@@ -9,7 +9,8 @@
          order_by :: list(),
          having :: list(),
          limit :: integer(),
-         offset :: integer()
+         offset :: integer(),
+         returning :: list()
         }).
 -record(ai_db_query_context,
         {
