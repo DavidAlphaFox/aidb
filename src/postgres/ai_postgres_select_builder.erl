@@ -12,7 +12,9 @@ build(Ctx)->
      fun ai_postgres_join_builder:build/1,
      fun ai_postgres_where_builder:build/1,
      fun ai_postgres_group_builder:build/1,
-     fun ai_postgres_having_builder:build/1
+     fun ai_postgres_having_builder:build/1,
+     fun ai_postgres_order_builder:build/1,
+     fun ai_postgres_limit_builder:build/1
     ]).
   
 build_from(#ai_db_query_context{

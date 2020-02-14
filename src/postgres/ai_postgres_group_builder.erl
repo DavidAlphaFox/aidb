@@ -19,6 +19,11 @@ build(#ai_db_query{table = Table,group_by = Group},
 
 build_field(MainTable,F,Acc)
   when erlang:is_atom(F)->
-  [ai_postgres_escape:escape_field({MainTable,F})|Acc];
+  case MainTable of
+    {as,_Table,Alias} ->
+      [ai_postgres_escape:escape_field({Alias,F})|Acc];
+    _ ->
+      [ai_postgres_escape:escape_field({MainTable,F})|Acc]
+  end;
 build_field(_MainTable,F,Acc) ->
   [ai_postgres_escape:escape_field(F)|Acc].

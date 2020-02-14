@@ -15,7 +15,7 @@ build(#ai_db_query{having = Having},
          options =Opts,slot = Slot } = Ctx)->
   {Values,Exprs,Count} =
     ai_postgres_condation_builder:transform(Having,Opts,{[], [], Slot}),
-  HavingSql = ai_postgres_condation_builder:build_where(Exprs),
+  HavingSql = ai_postgres_condation_builder:build(Exprs),
   Ctx#ai_db_query_context{
     sql = <<Sql/binary," HAVING ",HavingSql/binary>>,
     bindings = Bindings ++ lists:reverse(Values),

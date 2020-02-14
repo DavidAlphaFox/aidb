@@ -6,27 +6,8 @@ select()->
   ai_db_query:select({as,users,u},
                      [
                       {u,[name,id,role_id]},
-                      {r,[name,id]},
-                      {subquery,subquery(),p}
+                      {r,[name,id]}
                      ],Query).
-subquery()->
-  Query = ai_db_query:new(),
-  Q1 = ai_db_query:select(products,
-                     [
-                      {products,[amount,date]}
-                     ],Query),
-  ai_db_query:where([
-                     { '==',{products,user_id},{field,{u,id}}}
-                    ],Q1).
-subquery1()->
-  Query = ai_db_query:new(),
-  Q1 = ai_db_query:select({as,users,u1},
-                     [
-                      {u1,[salary]}
-                     ],Query),
-  ai_db_query:where([
-                     { '==',{u1,salary},10000}
-                    ],Q1).
 
 join(Query)-> ai_db_query:join(roles, id,role_id, Query).
 
@@ -34,13 +15,20 @@ where(Query)->
   Cond = [
           {'>',{u,id},1},
           {in,{r,name},[<<"admin">>,<<"superuser">>]},
-          {{u,name},not_null},
-          {'in',{u,salary},{subquery,subquery1()}}
+          {{u,name},not_null}
           ],
   ai_db_query:where(Cond,Query).
-  
+
+limit(Query)->
+  Q1 = ai_db_query:limit(10,Query),
+  ai_db_query:offset(10,Q1).
+group_by(Query)-> ai_db_query:group_by([id],Query).
+order_by(Query)-> ai_db_query:order_by([{id,desc}],Query).
 run()->
   Q = select(),
   Q1 = join(Q),
   Q2 = where(Q1),
-  ai_db_query:build(Q2).
+  Q3 = limit(Q2),
+  Q4 = group_by(Q3),
+  Q5 = order_by(Q4),
+  ai_db_query:build(Q5).

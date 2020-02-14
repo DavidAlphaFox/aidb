@@ -12,7 +12,7 @@ build(#ai_db_query{where = Where},
          options =Opts,slot = Slot } = Ctx)->
   {Values,Exprs,Count} =
     ai_postgres_condation_builder:transform(Where,Opts,{[], [], Slot}),
-  WhereSql = ai_postgres_condation_builder:build_where(Exprs),
+  WhereSql = ai_postgres_condation_builder:build(Exprs),
   Ctx#ai_db_query_context{
     sql = <<Sql/binary," WHERE ",WhereSql/binary>>,
     bindings = Bindings ++ lists:reverse(Values),
