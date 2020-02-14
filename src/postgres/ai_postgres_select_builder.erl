@@ -73,5 +73,25 @@ build_field({Table,TableFields},Acc)->
               ai_postgres_escape:escape_field({Table,TableField})
           end,
         {[ SqlField| F],Ctx}
-    end,Acc,TableFields).
-
+    end,Acc,TableFields);
+build_field(TableFields,{F,Ctx} = Acc)->
+  Query = Ctx#ai_db_query_context.query,
+  Opts = Ctx#ai_db_query_context.options,
+  TableName =
+    case Query#ai_db_query.table of
+      {as,_,Alias} -> Alias;
+      Table -> Table
+    end,
+  NeedPrefix = proplists:get_value(prefix,Opts,false),
+  if
+    NeedPrefix == true ->
+      build_field({TableName,TableFields},Acc);
+    true ->
+      F1 =
+        lists:foldl(
+          fun(TableField,F0)->
+              SqlField = ai_postgres_escape:escape_field(TableField),
+              [ SqlField| F0]
+          end,F,TableFields),
+      {F1,Ctx}
+  end.
