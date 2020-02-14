@@ -11,11 +11,7 @@ slot_numbered({Prefix, N}) ->
     H = ai_string:to_string(N),
     <<$\s,P/binary,H/binary,$\s>>.
 
-escape_field({raw,Field})-> Field;
-escape_field({raw_as,Field,ASField})->
-    AF = escape_field(ASField),
-    <<Field/binary," AS ",AF/binary>>;
-escape_field({sql,Field})-> Field;
+escape_field({sql,raw,Field})-> Field;
 escape_field({sql,as,Field,ASField})->
     AF = escape_field(ASField),
     <<Field/binary," AS ",AF/binary>>;
@@ -23,14 +19,10 @@ escape_field({as,Field,ASField})->
     F = escape_field(Field),
     AF = escape_field(ASField),
     <<F/binary," AS ",AF/binary>>;
-escape_field({prefix,Prefix,Column})->
+escape_field({Prefix,Column})->
   PrefixBin = escape_field(Prefix),
   ColumnBin = escape_field(Column),
   <<PrefixBin/binary,".",ColumnBin/binary>>;
-escape_field({Prefix,Column})->
-    PrefixBin = ai_string:to_string(Prefix),
-    ColumnBin = escape_field(Column),
-    <<PrefixBin/binary,".",ColumnBin/binary>>;
 escape_field(Field) ->
     F = ai_string:to_string(Field),
     if

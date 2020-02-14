@@ -16,15 +16,26 @@ subquery()->
                       {products,[amount,date]}
                      ],Query),
   ai_db_query:where([
-                     { '==',{prefix,products,user_id},{field,{prefix,u,id}}}
+                     { '==',{products,user_id},{field,{u,id}}}
                     ],Q1).
+subquery1()->
+  Query = ai_db_query:new(),
+  Q1 = ai_db_query:select({as,users,u1},
+                     [
+                      {u1,[salary]}
+                     ],Query),
+  ai_db_query:where([
+                     { '==',{u1,salary},10000}
+                    ],Q1).
+
 join(Query)-> ai_db_query:join(roles, id,role_id, Query).
 
 where(Query)->
   Cond = [
-          {'>',{prefix,u,id},1},
-          {in,{prefix,r,name},[<<"admin">>,<<"superuser">>]},
-          {{prefix,u,name},not_null}
+          {'>',{u,id},1},
+          {in,{r,name},[<<"admin">>,<<"superuser">>]},
+          {{u,name},not_null},
+          {'in',{u,salary},{subquery,subquery1()}}
           ],
   ai_db_query:where(Cond,Query).
   

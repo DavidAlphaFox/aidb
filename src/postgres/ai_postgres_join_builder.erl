@@ -30,6 +30,6 @@ join_type(full) -> <<" FULL JOIN ">>;
 join_type(join) -> <<" JOIN ">>.
 
 key({as,_Table,AsTable},Key)->
-  ai_postgres_escape:escape_field({prefix,AsTable,Key});
+  ai_postgres_escape:escape_field({AsTable,Key});
 key(Table,Key) ->
-  ai_postgres_escape:escape_field({prefix,Table,Key}).
+  ai_postgres_escape:escape_field({Table,Key}).

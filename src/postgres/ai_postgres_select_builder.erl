@@ -61,12 +61,12 @@ build_field({Table,TableFields},Acc)->
     fun(TableField,{F,Ctx})->
         SqlField =
           case TableField of
-            {sql,_,_}->
+            {sql,raw,_}->
               ai_postgres_escape:escape_field(TableField);
             {sql,as,_,_} ->
               ai_postgres_escape:escape_field(TableField);
             _ ->
-              ai_postgres_escape:escape_field({prefix,Table,TableField})
+              ai_postgres_escape:escape_field({Table,TableField})
           end,
         {[ SqlField| F],Ctx}
     end,Acc,TableFields).
