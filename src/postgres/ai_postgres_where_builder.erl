@@ -35,6 +35,8 @@ transform({Op,Cond},Acc)->
       'or' -> <<" OR">>;
       _ -> error({unsupported,operator, Op})
     end,
-  <<Acc/binary,Op0/binary," ( ",Cond/binary," ) ">>;
+  Cond0 = ai_string:to_string(Cond),
+  <<Acc/binary,Op0/binary," ( ",Cond0/binary," ) ">>;
 transform(Cond,Acc) ->
-  <<Acc/binary," AND ( ",Cond/binary," ) ">>.
+  Cond0 = ai_string:to_string(Cond),
+  <<Acc/binary," AND ( ",Cond0/binary," ) ">>.
