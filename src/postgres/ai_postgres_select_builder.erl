@@ -66,43 +66,19 @@ build_field({Table,TableFields},Acc)->
         SqlField = escape_field(Table,TableField),
         {[ SqlField| F],Ctx}
     end,Acc,TableFields);
-build_field(TableFields,{F,Ctx} = Acc)
+build_field(TableFields,{_F,Ctx} = Acc)
   when erlang:is_list(TableFields)->
   Query = Ctx#ai_db_query_context.query,
-  Opts = Ctx#ai_db_query_context.options,
   TableName =
     case Query#ai_db_query.table of
       {as,_,Alias} -> Alias;
       Table -> Table
     end,
-  NeedPrefix = proplists:get_value(prefix,Opts,false),
-  if
-    NeedPrefix == true -> build_field({TableName,TableFields},Acc);
-    true ->
-      F1 =
-        lists:foldl(
-          fun(TableField,F0)->
-              SqlField = ai_postgres_escape:escape_field(TableField),
-              [ SqlField| F0]
-          end,F,TableFields),
-      {F1,Ctx}
-  end;
+  build_field({TableName,TableFields},Acc);
+
 build_field(TableField,{F,Ctx}) ->
-  Query = Ctx#ai_db_query_context.query,
-  Opts = Ctx#ai_db_query_context.options,
-  TableName =
-    case Query#ai_db_query.table of
-      {as,_,Alias} -> Alias;
-      Table -> Table
-    end,
-  NeedPrefix = proplists:get_value(prefix,Opts,false),
-  if
-    NeedPrefix == true ->
-      {[escape_field(TableName,TableField)|F],Ctx};
-    true ->
-      SqlField = ai_postgres_escape:escape_field(TableField),
-      {[SqlField|F],Ctx}
-  end.
+  SqlField = ai_postgres_escape:escape_field(TableField),
+  {[SqlField|F],Ctx}.
 
 escape_field(_Table,{sql,raw,_} = TableField)-> ai_postgres_escape:escape_field(TableField);
 escape_field(_Table,{sql,as,_,_} = TableField)-> ai_postgres_escape:escape_field(TableField);

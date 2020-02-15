@@ -22,7 +22,7 @@ build(#ai_db_query{limit = Limit,offset = Offset},
       undefined -> {Sql0,Slot0,Bindings0};
       _ ->
         OffsetSlot = erlang:integer_to_binary(Slot0),
-        {<<Sql/binary," OFFSET $",OffsetSlot/binary>>,Slot0 + 1, Bindings0 ++ [Offset]}
+        {<<Sql0/binary," OFFSET $",OffsetSlot/binary>>,Slot0 + 1, Bindings0 ++ [Offset]}
     end,
   Ctx#ai_db_query_context{
     sql = Sql1,

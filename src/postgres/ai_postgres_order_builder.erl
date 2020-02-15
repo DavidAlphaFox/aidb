@@ -7,7 +7,7 @@ build(#ai_db_query_context{query = Query} = Ctx)->
 build(#ai_db_query{order_by = undefined},Ctx) -> Ctx;
 build(#ai_db_query{order_by = []},Ctx)-> Ctx;
 build(#ai_db_query{table = Table,order_by = Order},
-      #ai_db_query_context{ sql = Sql } = Ctx)->
+      #ai_db_query_context{ sql = Sql,options = Opts } = Ctx)->
   Fields = lists:foldl(
              fun(F,Acc) -> build_field(Table,F,Acc) end,
              [],Order),
