@@ -27,4 +27,4 @@ to_map(Columns,Rows,ColFun)->
         maps:from_list(Pairs)
     end,Rows).
 
-columns(Col)-> erlang:binary_to_atom(Col#column.name, utf8). 
+columns(ColName)-> erlang:binary_to_atom(ColName, utf8).
