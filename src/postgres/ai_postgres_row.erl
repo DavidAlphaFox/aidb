@@ -11,7 +11,7 @@ to_map(Columns,Rows)-> to_map(Columns,Rows,fun columns/1).
 
 -spec to_proplists(Columns::list(),Rows::list(),ColFun::function()) -> list().
 to_proplists(Columns,Rows,ColFun)->
-  ColumnNames = lists:map(ColFun, Columns),
+  ColumnNames = lists:map(fun(Col)-> ColFun(Col#column.name) end, Columns),
   lists:map(
     fun(Row) ->
         Fields = erlang:tuple_to_list(Row),
@@ -19,7 +19,7 @@ to_proplists(Columns,Rows,ColFun)->
   end,Rows).
 -spec to_map(Columns::list(),Rows::list(),ColFun::function()) -> map().
 to_map(Columns,Rows,ColFun)->
-  ColumnNames = lists:map(ColFun, Columns),
+  ColumnNames = lists:map(fun(Col)-> ColFun(Col#column.name) end, Columns),
   lists:map(
     fun(Row) ->
         Fields = erlang:tuple_to_list(Row),
