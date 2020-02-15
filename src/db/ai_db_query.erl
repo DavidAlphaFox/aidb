@@ -49,6 +49,7 @@ delete(Table,Query)->
     action = delete,
     table = Table
    }.
+where(Cond,undefined,Query)-> where(Cond,Query);
 where(Cond,ExtraWhere,Query)
   when erlang:is_binary(ExtraWhere)->
   where(Cond,[ExtraWhere],Query);
@@ -63,6 +64,7 @@ where(Cond,ExtraWheres,
   where(Cond,Query#ai_db_query{
                extra_where = OldExtra ++ ExtraWheres}).
 
+where(undefined,Query)-> Query;
 where(Cond,Query) when erlang:is_tuple(Cond)->
   where([Cond],Query);
 where(Cond,#ai_db_query{ where = undefined } = Query) ->
@@ -73,7 +75,7 @@ where(Cond,#ai_db_query{ where = OldCond} = Query) ->
   Query#ai_db_query{
     where = OldCond ++ Cond
    }.
-
+having(undefined,Query) -> Query;
 having(Cond,Query) when erlang:is_tuple(Cond)->
   having([Cond],Query);
 having(Cond,#ai_db_query{ having = undefined } = Query) ->
@@ -84,8 +86,9 @@ having(Cond,#ai_db_query{ having = OldCond } = Query) ->
   Query#ai_db_query{
     having = OldCond ++ Cond
    }.
-
+limit(undefined,Query)-> Query;
 limit(Limit, Query)-> Query#ai_db_query{ limit = Limit }.
+offset(undefined,Query)-> Query;
 offset(Offset,Query)-> Query#ai_db_query{ offset = Offset }.
 
 join(Table,PK,FK,Query)->
@@ -104,6 +107,7 @@ join(Join,#ai_db_query{ join = OldJoin } = Query) ->
   Query#ai_db_query{
     join = OldJoin ++ Join
    }.
+group_by(undefined,Query) -> Query;
 group_by(Field,Query) when erlang:is_atom(Field)->
   group_by([Field],Query);
 group_by(Fields,#ai_db_query{ group_by = undefined } = Query) ->
@@ -112,6 +116,8 @@ group_by(Fields,#ai_db_query{ group_by = OldGroupBy } = Query) ->
   Query#ai_db_query{
     group_by = OldGroupBy ++ Fields
    }.
+
+order_by(undefined,Query)-> Query;
 order_by(Field,Query) when erlang:is_tuple(Field) ->
   order_by([Field],Query);
 order_by(Fields,#ai_db_query{ order_by = undefined } = Query) ->
@@ -120,7 +126,7 @@ order_by(Fields,#ai_db_query{ order_by = OldOrderBy } = Query) ->
   Query#ai_db_query{
     order_by = OldOrderBy ++ Fields
    }.
-
+returning(undefined,Query) -> Query;
 returning(Field,Query) when erlang:is_atom(Field)->
   returning([Field],Query);
 returning(Fields,Query) ->
