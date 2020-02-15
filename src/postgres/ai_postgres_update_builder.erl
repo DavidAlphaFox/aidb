@@ -31,18 +31,18 @@ build_fields(#ai_db_query_context{
                } = Ctx)->
   FieldsAndValues = transform(Query#ai_db_query.fields),
   {NextSlot,Fields, Values} =
-    lists:foldr(
+    lists:foldl(
       fun({K, V}, {Index,Fs, Vs}) ->
           IndexBin = erlang:integer_to_binary(Index),
           FieldName = ai_postgres_escape:escape_field(K),
           UpdateSlot = <<FieldName/binary, " = $", IndexBin/binary>>,
           {Index+1,[UpdateSlot|Fs],[V|Vs]}
       end, {Slot,[], []}, FieldsAndValues),
-  UpdateSlotsCSV = ai_string:join(Fields, <<",">>),
+  UpdateSlotsCSV = ai_string:join(lists:reverse(Fields), <<",">>),
 
   Ctx#ai_db_query_context{
     sql = <<Sql/binary," SET ",UpdateSlotsCSV/binary>>,
-    bindings = Bindings ++ Values,
+    bindings = Bindings ++ lists:reverse(Values),
     slot = NextSlot
    }.
 
