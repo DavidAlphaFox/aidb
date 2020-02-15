@@ -5,10 +5,10 @@
 build(#ai_db_query_context{query = Query} = Ctx)->
   build(Query,Ctx).
 
-build(#ai_db_query{group_by = undefined},_Ctx) -> error({missing,group_by});
-build(#ai_db_query{group_by = []},_Ctx)-> error({missing,group_by});
 build(#ai_db_query{having = undefined},Ctx)-> Ctx;
 build(#ai_db_query{having = []},Ctx)-> Ctx;
+build(#ai_db_query{group_by = undefined},_Ctx) -> error({missing,group_by});
+build(#ai_db_query{group_by = []},_Ctx)-> error({missing,group_by});
 build(#ai_db_query{having = Having},
       #ai_db_query_context{
          sql = Sql,bindings = Bindings,

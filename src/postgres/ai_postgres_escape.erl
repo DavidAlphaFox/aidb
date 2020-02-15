@@ -34,13 +34,13 @@ escape_field({Prefix,Column})->
   ColumnBin = escape_field(Column),
   <<PrefixBin/binary,".",ColumnBin/binary>>;
 escape_field(Field) ->
-    F = ai_string:to_string(Field),
-    if
-        F == <<"*">> -> F;
-        true->
-            F1 = re:replace(F,"\"","\\\"",[global,{return,binary}]),
-            <<"\"",F1/binary,"\"">>
-    end.
+  F = ai_string:to_string(Field),
+  if
+    F == <<"*">> -> F;
+    true->
+      F1 = re:replace(F,"\"","\\\"",[global,{return,binary}]),
+      <<"\"",F1/binary,"\"">>
+  end.
 
 escape_value(Value)->
   F = ai_string:to_string(Value),
