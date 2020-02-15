@@ -61,7 +61,7 @@ prefix(Prefix,Fields,Opts)->
       do_prefix(Prefix,FilterdFields,UseAs)
   end.
 
-do_prefix(Prefix,Fields,false)->
+do_prefix(Prefix,Fields,true)->
   maps:fold(
     fun(Key,Attrs,Acc)->
         case proplists:lookup(as,Attrs) of
@@ -69,7 +69,7 @@ do_prefix(Prefix,Fields,false)->
           _ -> [{as,{Prefix,Key},Key}|Acc]
         end
     end,[],Fields);
-do_prefix(Prefix,Fields,true) ->
+do_prefix(Prefix,Fields,false) ->
   maps:fold(
     fun(Key,_Attrs,Acc)-> [{as,{Prefix,Key},Key}|Acc] end,
     [],Fields).
