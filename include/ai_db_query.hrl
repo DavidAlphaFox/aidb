@@ -4,6 +4,7 @@
          table :: atom(),
          fields :: list(),
          where :: list(),
+         extra_where :: list(),
          join :: list(),
          group_by :: list(),
          order_by :: list(),

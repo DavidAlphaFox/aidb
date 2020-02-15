@@ -1,4 +1,4 @@
--module(ai_postgres_condation_builder).
+-module(ai_postgres_condition_builder).
 -include("ai_db_query.hrl").
 -export([transform/3,build/1]).
 
@@ -103,7 +103,7 @@ transform({Name, Value},_Opts,
      Count
     };
 transform([],_Opts, Acc) -> Acc;
-transform(Expr,_Opts, _) -> throw({unsupported,expression, Expr}).
+transform(Expr,_Opts, _) -> error({unsupported,expression, Expr}).
 
 
 build([]) -> <<>>;

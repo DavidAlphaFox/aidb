@@ -8,6 +8,7 @@
          update/3,
          delete/2,
          where/2,
+         where/3,
          having/2,
          limit/2,
          offset/2,
@@ -48,6 +49,19 @@ delete(Table,Query)->
     action = delete,
     table = Table
    }.
+where(Cond,ExtraWhere,Query)
+  when erlang:is_binary(ExtraWhere)->
+  where(Cond,[ExtraWhere],Query);
+where(Cond,ExtraWhere,Query)
+  when erlang:is_tuple(ExtraWhere)->
+  where(Cond,[ExtraWhere],Query);
+where(Cond,ExtraWheres,
+      #ai_db_query{extra_where = undefined} = Query) ->
+  where(Cond,Query#ai_db_query{extra_where = ExtraWheres});
+where(Cond,ExtraWheres,
+      #ai_db_query{extra_where = OldExtra} = Query) ->
+  where(Cond,Query#ai_db_query{
+               extra_where = OldExtra ++ ExtraWheres}).
 
 where(Cond,Query) when erlang:is_tuple(Cond)->
   where([Cond],Query);
@@ -115,9 +129,9 @@ returning(Fields,Query) ->
    }.
 
 build(Query)->
-  build(Query,ai_postgres_query_builder,[]).
+  build(Query,ai_postgres_query,[]).
 build(Query,Options)->
-  build(Query,ai_postgres_query_builder,Options).
+  build(Query,ai_postgres_query,Options).
 build(Query,Module,Options) ->
   Context = #ai_db_query_context{
                query = Query,
