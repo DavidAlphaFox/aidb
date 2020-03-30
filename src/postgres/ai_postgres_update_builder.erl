@@ -17,14 +17,11 @@ build_table(#ai_db_query_context{
                query = Query,
                sql = Sql
               } = Ctx)->
-  Table0 =
-    case Query#ai_db_query.table of
-      {as,Table,_Alias}-> ai_postgres_escape:escape_field(Table);
-      Table -> ai_postgres_escape:escape_field(Table)
-    end,
+  Table = ai_postgres_escape:escape_field(Query#ai_db_query.table),
   Ctx#ai_db_query_context{
-    sql = <<Sql/binary, Table0/binary>>
+    sql = <<Sql/binary, Table/binary>>
    }.
+
 build_fields(#ai_db_query_context{
                 query = Query,sql = Sql,
                 slot = Slot,bindings = Bindings

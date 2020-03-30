@@ -5,38 +5,24 @@
 build(#ai_db_query_context{query = Query} = Ctx)->
   build(Query,Ctx).
 build(#ai_db_query{order_by = undefined},Ctx) -> Ctx;
-build(#ai_db_query{table = Table,order_by = Order},
+build(#ai_db_query{order_by = Order},
       #ai_db_query_context{ sql = Sql } = Ctx)->
-  Fields = lists:foldl(
-             fun(F,Acc) -> build_field(Table,F,Acc) end,
-             [],Order),
+  Fields = lists:foldl(fun build_field/2,[],Order),
   Fields0 = lists:reverse(Fields),
   Fields1 = ai_string:join(Fields0,<<",">>),
   Ctx#ai_db_query_context{
     sql = <<Sql/binary," ORDER BY ",Fields1/binary>>
    }.
 
-build_field(_MainTable,{Table,OrderList},Acc)
+build_field({Table,OrderList},Acc)
   when erlang:is_list(OrderList) ->
   lists:foldl(fun({F,Sort},Acc0)->
                   F0 = ai_postgres_escape:escape_field({Table,F}),
                   Short0 = sort(Sort),
                   [<<F0/binary," ",Short0/binary>>|Acc0]
               end, Acc,OrderList);
-build_field(_MainTable,{F,Sort},Acc)
-  when erlang:is_tuple(F) ->
+build_field({F,Sort},Acc) ->
   F0 = ai_postgres_escape:escape_field(F),
-  Short0 = sort(Sort),
-  [<<F0/binary," ",Short0/binary>>|Acc];
-
-build_field(MainTable,{F,Sort},Acc) ->
-  F0 =
-    case MainTable of
-      {as,_Table,Alias} ->
-        ai_postgres_escape:escape_field({Alias,F});
-      _ ->
-        ai_postgres_escape:escape_field({MainTable,F})
-    end,
   Short0 = sort(Sort),
   [<<F0/binary," ",Short0/binary>>|Acc].
 
