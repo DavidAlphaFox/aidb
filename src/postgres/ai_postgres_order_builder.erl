@@ -37,7 +37,7 @@ build_field(MainTable,{F,Sort},Acc) ->
       _ ->
         ai_postgres_escape:escape_field({MainTable,F})
     end,
-  Short0 = ai_string:to_string(Sort),
+  Short0 = sort(Sort),
   [<<F0/binary," ",Short0/binary>>|Acc].
 
 sort(asc) -> <<"ASC">>;

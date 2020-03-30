@@ -9,7 +9,7 @@ select()->
                       {r,[name,id]}
                      ],Query).
 
-join(Query)-> ai_db_query:join(roles, id,role_id, Query).
+join(Query)-> ai_db_query:join({as,roles,r}, id,role_id, Query).
 
 where(Query)->
   Cond = [
