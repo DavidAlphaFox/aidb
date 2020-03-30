@@ -1,4 +1,4 @@
--module(ai_postgres_condition_builder).
+-module(ai_postgres_condition).
 -include("ai_db_query.hrl").
 -export([transform/3,build/1]).
 

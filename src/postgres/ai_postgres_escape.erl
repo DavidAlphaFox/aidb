@@ -5,14 +5,15 @@
          escape_value/1,
          escape_operator/1
         ]).
+
 -spec slot_numbered({Prefix::char(),N::iodata()})->binary().
 slot_numbered({Prefix, N}) ->
     P = ai_string:to_string(Prefix),
     H = ai_string:to_string(N),
     <<$\s,P/binary,H/binary,$\s>>.
 
-escape_field({sql,raw,Field})-> Field;
-escape_field({sql,as,Field,ASField})->
+escape_field({sql,Field})-> Field;
+escape_field({sql,Field,ASField})->
   AF = escape_field(ASField),
   <<Field/binary," AS ",AF/binary>>;
 escape_field({proc,Proc,Field})->

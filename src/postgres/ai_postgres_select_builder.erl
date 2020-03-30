@@ -33,16 +33,15 @@ build_fields(#ai_db_query_context{
       undefined -> {<<" * ">>,Ctx };
       [] -> {<<" * ">>,Ctx};
       Fields ->
-        {Fields0,Ctx0} =
-          lists:foldl(fun build_field/2,{[],Ctx},Fields),
+        {Fields0,Ctx0} = lists:foldl(fun build_field/2,{[],Ctx},Fields),
         {ai_string:join(Fields0,<<",">>),Ctx0}
     end,
   Ctx1#ai_db_query_context{
     sql = <<Sql/binary,SelectFields/binary>>
    }.
 
-build_field({subquery,SubQuery,Alias},{F,Ctx})->
-  Context =
+build_field({query,SubQuery,Alias},{F,Ctx})->
+  SubQueryContext =
     #ai_db_query_context{
        query = SubQuery,
        options = Ctx#ai_db_query_context.options,
@@ -50,9 +49,8 @@ build_field({subquery,SubQuery,Alias},{F,Ctx})->
        bindings = [],
        slot = Ctx#ai_db_query_context.slot
       },
-  {Slot,Bindings,Sql} =
-    ai_postgres_subquery_builder:build(Context),
-  SqlField = ai_postgres_escape:escape_field({sql,as,Sql,Alias}),
+  {Slot,Bindings,Sql} = build_query(SubQueryContext),
+  SqlField = ai_postgres_escape:escape_field({sql,Sql,Alias}),
   {
    [SqlField|F],
    Ctx#ai_db_query_context{
@@ -66,22 +64,24 @@ build_field({Table,TableFields},Acc)->
         SqlField = escape_field(Table,TableField),
         {[ SqlField| F],Ctx}
     end,Acc,TableFields);
-build_field(TableFields,{_F,Ctx} = Acc)
-  when erlang:is_list(TableFields)->
-  Query = Ctx#ai_db_query_context.query,
-  TableName =
-    case Query#ai_db_query.table of
-      {as,_,Alias} -> Alias;
-      Table -> Table
-    end,
-  build_field({TableName,TableFields},Acc);
 
 build_field(TableField,{F,Ctx}) ->
   SqlField = ai_postgres_escape:escape_field(TableField),
   {[SqlField|F],Ctx}.
 
-escape_field(_Table,{sql,raw,_} = TableField)-> ai_postgres_escape:escape_field(TableField);
-escape_field(_Table,{sql,as,_,_} = TableField)-> ai_postgres_escape:escape_field(TableField);
+
+build_query(Ctx)->
+  Ctx0 = ai_postgres_select_builder:build(Ctx),
+  Sql = Ctx0#ai_db_query_context.sql,
+  Sql0 = <<"( ", Sql/binary, " )">>,
+  {
+   Ctx0#ai_db_query_context.slot,
+   Ctx0#ai_db_query_context.bindings,
+   Sql0
+  }.
+
+escape_field(_Table,{sql,_} = TableField)-> ai_postgres_escape:escape_field(TableField);
+escape_field(_Table,{sql,_,_} = TableField)-> ai_postgres_escape:escape_field(TableField);
 escape_field(Table,{proc,Proc,Field})-> ai_postgres_escape:escape_field({proc,Proc,{Table,Field}});
 escape_field(Table,{proc,Proc,Field,Alias})->ai_postgres_escape:escape_field({proc,Proc,{Table,Field},Alias});
 escape_field(Table,TableField)-> ai_postgres_escape:escape_field({Table,TableField}).
