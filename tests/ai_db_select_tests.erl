@@ -23,7 +23,10 @@ limit(Query)->
   Q1 = ai_db_query:limit(10,Query),
   ai_db_query:offset(10,Q1).
 group_by(Query)-> ai_db_query:group_by([id],Query).
-order_by(Query)-> ai_db_query:order_by([{id,desc}],Query).
+order_by(Query)-> ai_db_query:order_by([
+                                        {u,[{id,desc},{role_id,asc}]},
+                                        {r,[{id,desc},{name,asc}]}
+                                       ],Query).
 run()->
   Q = select(),
   Q1 = join(Q),
