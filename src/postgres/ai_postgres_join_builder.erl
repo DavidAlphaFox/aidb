@@ -5,9 +5,8 @@
 build(#ai_db_query_context{query = Query } =  Ctx)->
   build(Query,Ctx).
 build(#ai_db_query{join = undefined},Ctx)-> Ctx;
-build(#ai_db_query{join = []},Ctx) -> Ctx;
 build(#ai_db_query{join = Joins,table = Table},
-      #ai_db_query_context{sql = Sql} =Ctx) ->
+      #ai_db_query_context{sql = Sql} = Ctx) ->
   Joins0 =
     lists:foldr(
       fun({Type,JoinTable,PK,FK},Acc)->

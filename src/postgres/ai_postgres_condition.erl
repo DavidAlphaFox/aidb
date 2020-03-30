@@ -8,7 +8,7 @@ transform(Exprs,Opts, Acc) when is_list(Exprs) ->
     Acc, Exprs);
 
 transform({LogicalOp, Exprs},Opts,
-                {Values, CleanExprs, Count})
+          {Values, CleanExprs, Count})
   when (LogicalOp == 'and')
        or (LogicalOp == 'or')
        or (LogicalOp == 'not') ->
@@ -20,7 +20,7 @@ transform({LogicalOp, Exprs},Opts,
 %% in, not in, any, some and all on Array
 %% currently we only support in/not in
 transform({Op,Name, InValues}, _Opts,
-                {Values, CleanExprs, Count})
+          {Values, CleanExprs, Count})
   when erlang:is_list(InValues)
        and ((Op == 'in') or (Op == 'not_in')) ->
   InValues0 = lists:reverse(InValues),
@@ -33,53 +33,55 @@ transform({Op,Name, InValues}, _Opts,
   };
 %% in, not in, exits, not exits, any, some on and all subquery
 %% currently we only support in/not in, exists/not exists
-transform({Op,Name,{subquery,SubQuery}},Opts,
-               {Values,CleanExprs,Count})->
-  Context =
-    #ai_db_query_context{
-       query = SubQuery,
-       options = Opts,
-       sql = <<"">>,
-       bindings = [],
-       slot = Count
-      },
+transform({Op,Name,{query,SubQuery}},Opts,
+          {Values,CleanExprs,Count})->
+  Context = #ai_db_query_context{
+               query = SubQuery,
+               options = Opts,
+               sql = <<"">>,
+               bindings = [],
+               slot = Count
+              },
   {Slot,Bindings,Sql} =
-    ai_postgres_subquery_builder:build(Context),
+    ai_postgres_select_builder:build(Context),
+  Sql0 = <<"( ",Sql/binary," )">>,
   {
-    lists:reverse(Bindings) ++ Values,
-    [{Op,Name,{sql,raw,Sql}}| CleanExprs],
-    Slot };
+   lists:reverse(Bindings) ++ Values,
+   [{Op,Name,{sql,Sql0}}| CleanExprs],
+   Slot
+  };
 
 transform({_Op,_Name,{sql,_}} = Cond,_Opts,
-               {Values,CleanExprs,Count})->
+          {Values,CleanExprs,Count})->
   { Values,[Cond| CleanExprs],Count };
 %% 仅当是tuple的时候才是两个field操作
 transform({_Op,_Name1, {field,_}} = Cond,_Opts,
-                {Values, CleanExprs, Count}) ->
+          {Values, CleanExprs, Count}) ->
   {Values,[Cond | CleanExprs], Count};
 %% 特殊操作符号
 transform({Op,_Name,_Value} = Cond,_Opts,
-               {Values,CleanExprs,Count})
+          {Values,CleanExprs,Count})
   when (Op == 'is') or (Op == 'is_not') ->
   {Values,[Cond| CleanExprs],Count};
 
 transform({Op,Name, Value},_Opts,
-                {Values, CleanExprs, Count}) ->
-    {
-     [Value | Values],
-     [{Op,Name, {'$', Count}} | CleanExprs],
-     Count + 1
-    };
+          {Values, CleanExprs, Count}) ->
+  {
+   [Value | Values],
+   [{Op,Name, {'$', Count}} | CleanExprs],
+   Count + 1
+  };
 %% 直接相等操作
 transform({Name1, {field,_} = Name2}, _Opts,
-                {Values, CleanExprs, Count}) ->
-    {
-     Values,
-     [{'==',Name1, Name2} | CleanExprs],
-     Count
-    };
+          {Values, CleanExprs, Count}) ->
+  {
+   Values,
+   [{'==',Name1, Name2} | CleanExprs],
+   Count
+  };
+%% 通常的值
 transform({Name, Value},_Opts,
-                {Values, CleanExprs, Count})
+          {Values, CleanExprs, Count})
   when Value =/= 'null'
        andalso Value =/= 'not_null'
        andalso (not erlang:is_boolean(Value))->
@@ -88,15 +90,16 @@ transform({Name, Value},_Opts,
      [{'==',Name, {'$', Count}} | CleanExprs],
      Count + 1
     };
+%% NULL值和非NULL值
 transform({Name, not_null},_Opts,
-                {Values, CleanExprs, Count}) ->
+          {Values, CleanExprs, Count}) ->
     {
      Values,
      [{is_not, Name, null} | CleanExprs],
      Count
     };
 transform({Name, Value},_Opts,
-                {Values, CleanExprs, Count}) ->
+          {Values, CleanExprs, Count}) ->
     {
      Values,
      [{is,Name, Value} | CleanExprs],
@@ -128,6 +131,7 @@ build({is_not,Name,Value})->
   N = ai_postgres_escape:escape_field(Name),
   V = ai_string:to_string(Value),
   <<N/binary," IS NOT ",V/binary>>;
+%% IN查询
 build({in,Name,{'$',Holders}}) ->
   Slots =
     lists:map(
@@ -136,16 +140,19 @@ build({in,Name,{'$',Holders}}) ->
   Slots0 = ai_string:join(Slots,<<",">>),
   N = ai_postgres_escape:escape_field(Name),
   <<N/binary," IN ( ",Slots0/binary," )">>;
+%% 处理两个表或者两个字段之间关系
 build({Op,Name1,{field,Name2}}) ->
   N1 = ai_postgres_escape:escape_field(Name1),
   N2 = ai_postgres_escape:escape_field(Name2),
   O = ai_postgres_escape:escape_operator(Op),
   <<N1/binary,O/binary,N2/binary>>;
+%% 处理常规查询
 build({Op, Name, { '$', _ } = Slot}) ->
   P = ai_postgres_escape:slot_numbered(Slot),
   N = ai_postgres_escape:escape_field(Name),
   O = ai_postgres_escape:escape_operator(Op),
   <<N/binary,O/binary,P/binary>>;
+%% 处理子查询
 build({Op, Name, Query}) ->
   N = ai_postgres_escape:escape_field(Name),
   Q = ai_postgres_escape:escape_field(Query),

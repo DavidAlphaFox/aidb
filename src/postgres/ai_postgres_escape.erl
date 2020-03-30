@@ -16,6 +16,14 @@ escape_field({sql,Field})-> Field;
 escape_field({sql,Field,ASField})->
   AF = escape_field(ASField),
   <<Field/binary," AS ",AF/binary>>;
+escape_field({proc,Proc,Fields})
+  when erlang:is_list(Fields)->
+  Fields0 =
+    lists:map(
+      fun(F)-> escape_field(F) end, Fields),
+  Fields1 = ai_string:join(Fields0,<<",">>),
+  Proc0 = ai_string:to_string(Proc),
+  <<Proc0/binary,"(",Fields1/binary,")">>;
 escape_field({proc,Proc,Field})->
   Proc0 = ai_string:to_string(Proc),
   F = escape_field(Field),
