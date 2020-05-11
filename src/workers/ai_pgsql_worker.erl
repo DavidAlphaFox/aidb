@@ -1,7 +1,7 @@
 -module(ai_pgsql_worker).
 -compile({inline,[error_message/1]}).
 
--export([init/1]).
+-export([init/1,handle_info/2,terminate/1]).
 -export([
          execute/2,
          transaction/2
@@ -41,6 +41,13 @@ transaction(Fun,State) ->
       end;
     Error -> Error
   end.
+
+handle_info(_,State) -> State.
+terminate(#state{conn = undefined}) -> ok;
+terminate(#state{conn = Conn}) ->
+  catch epgsql:close(Conn),
+  ok.
+
 
 %%%===================================================================
 %%% Internal functions

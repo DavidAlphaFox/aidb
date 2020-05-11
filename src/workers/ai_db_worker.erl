@@ -117,8 +117,12 @@ handle_cast(_Request, State) ->
         {noreply, NewState :: term(), Timeout :: timeout()} |
         {noreply, NewState :: term(), hibernate} |
         {stop, Reason :: normal | term(), NewState :: term()}.
-handle_info(_Info, State) ->
-  {noreply, State}.
+handle_info(Info, #state{
+                     handler = Handler,
+                     handler_state = HandlerState
+                    } = State) ->
+  NewHandlerState = Handler:handle_info(Info,HandlerState),
+  {noreply, State#state{handler_state = NewHandlerState}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -131,7 +135,11 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec terminate(Reason :: normal | shutdown | {shutdown, term()} | term(),
                 State :: term()) -> any().
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{
+                      handler = Handler,
+                      handler_state = HandlerState
+                     }) ->
+  Handler:terminate(HandlerState),
   ok.
 
 %%--------------------------------------------------------------------
