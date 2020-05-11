@@ -1,6 +1,6 @@
 PROJECT = aidb
 PROJECT_DESCRIPTION = database tools for production from ailink.io
-PROJECT_VERSION = 0.8.0
+PROJECT_VERSION = 0.8.1
 ERLC_OPTS = +debug_info +warn_export_vars +warn_shadow_vars +warn_obsolete_guard -DENABLE_LOG
 
 DEPS = epgsql eredis ailib
