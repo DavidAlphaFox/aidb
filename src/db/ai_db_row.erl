@@ -1,14 +1,14 @@
 -module(ai_db_row).
 -compile({inline,
           [
-           read_key/2,
-           read_key/3,
+           key/2,
+           key/3,
            cast_value/2
           ]}).
 
 -export([build/2,build/3]).
 -export([columns/1,columns/2]).
--export([prefix/2,prefix/3]).
+-export([prefix_columns/2,prefix_columns/3]).
 
 -spec build(Fields::map(),Input::map())-> map().
 build(Fields,Input)-> build(Fields,Input,undefined).
@@ -23,7 +23,7 @@ build(Fields,Input,Allowed)->
     end,
   maps:fold(
     fun(Key,Attrs,Acc)->
-        case read_key(Key,Attrs,Input) of
+        case key(Key,Attrs,Input) of
           {ok,Value} ->
             CastValue = cast_value(Attrs,Value),
             Acc#{Key => CastValue};
@@ -45,14 +45,14 @@ columns(Fields,true)->
       end
     end,[],Fields).
 
--spec prefix(Prefix::atom(),
+-spec prefix_columns(Prefix::atom() | binary(),
              Fields::map())->list().
-prefix(Prefix,Fields)->
-  prefix(Prefix,Fields,[]).
+prefix_columns(Prefix,Fields)->
+  prefix_columns(Prefix,Fields,[]).
 
--spec prefix(Prefix::atom(),Fields::map(),
+-spec prefix_columns(Prefix::atom()|binary(),Fields::map(),
             Opts::list())->list().
-prefix(Prefix,Fields,Opts)->
+prefix_columns(Prefix,Fields,Opts)->
   UseAs = proplists:get_value(as,Opts,false),
   case proplists:get_value(allowed,Opts) of
     undefined -> do_prefix(Prefix,Fields,UseAs);
@@ -80,26 +80,26 @@ do_prefix(Prefix,Fields,false) ->
 %%% Internal functions
 %%%===================================================================
 
-read_key(Key,Attrs,Input)->
-  case read_key(Key,Input) of
+key(Key,Attrs,Input)->
+  case key(Key,Input) of
     undefined ->
       case proplists:lookup(as,Attrs) of
-        {as,AsKey} -> read_key(AsKey,Input);
+        {as,AsKey} -> key(AsKey,Input);
         _ -> undefined
       end;
     Value -> Value
 end.
 
-read_key(Key,Input)->
-    case maps:is_key(Key,Input) of
-        false ->
-            KeyBin = ai_string:to_string(Key),
-            case maps:is_key(KeyBin,Input) of
-                false -> undefined;
-                true -> {ok,maps:get(KeyBin,Input)}
-            end;
-        true -> {ok,maps:get(Key,Input)}
-    end.
+key(Key,Input)->
+  case maps:is_key(Key,Input) of
+    false ->
+      KeyBin = ai_string:to_string(Key),
+      case maps:is_key(KeyBin,Input) of
+        false -> undefined;
+        true -> {ok,maps:get(KeyBin,Input)}
+      end;
+    true -> {ok,maps:get(Key,Input)}
+  end.
 cast_value(Attrs,Value)->
   {type,Type} = proplists:lookup(type,Attrs),
   case ai_db_type:cast(Type,Value) of

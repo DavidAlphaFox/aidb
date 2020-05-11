@@ -81,78 +81,10 @@ init(Args) ->
         {noreply, NewState :: term(), hibernate} |
         {stop, Reason :: term(), Reply :: term(), NewState :: term()} |
         {stop, Reason :: term(), NewState :: term()}.
-handle_call({persist, Model}, _From,
+handle_call({execute,Fun},_From,
             #state{handler = Handler,
                    handler_state = HandlerState} = State) ->
-  {Reply, NewState} = Handler:persist(Model,HandlerState),
-  {reply, Reply, State#state{handler_state = NewState}};
-
-handle_call({fetch, ModelName, Id}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  { Reply, NewState} = Handler:fetch(ModelName, Id, HandlerState),
-  {reply, Reply, State#state{handler_state=NewState}};
-
-handle_call({delete_by, ModelName, Conditions}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  { Reply, NewState} = Handler:delete_by(ModelName, Conditions, HandlerState),
-  {reply, Reply, State#state{handler_state=NewState}};
-
-handle_call({delete_all, ModelName}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  {Reply, NewState} = Handler:delete_all(ModelName, HandlerState),
-  {reply, Reply, State#state{handler_state=NewState}};
-
-handle_call({find_all, ModelName}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  {Reply, NewState} = Handler:find_all(ModelName, HandlerState),
-  {reply, Reply, State#state{handler_state = NewState}};
-
-handle_call({find_all, ModelName, SortFields, Limit, Offset}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  { Reply, NewState} = Handler:find_all(
-                         ModelName, SortFields, Limit, Offset, HandlerState),
-  {reply, Reply, State#state{handler_state = NewState}};
-
-handle_call({find_by, ModelName, Conditions}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  { Reply, NewState} = Handler:find_by(ModelName, Conditions, HandlerState),
-  {reply, Reply, State#state{handler_state=NewState}};
-
-handle_call({find_by, ModelName, Conditions, Limit, Offset}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  { Reply, NewState} = Handler:find_by(
-                         ModelName, Conditions, Limit, Offset, HandlerState),
-  {reply, Reply, State#state{handler_state=NewState}};
-
-handle_call({find_by, ModelName, Conditions, SortFields, Limit, Offset}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  { Reply, NewState} = Handler:find_by(
-                         ModelName, Conditions, SortFields, Limit, Offset, HandlerState),
-  {reply, Reply, State#state{handler_state=NewState}};
-
-handle_call({count, ModelName}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  { Reply, NewState} = Handler:count(ModelName, HandlerState),
-  {reply, Reply, State#state{handler_state = NewState}};
-
-handle_call({count_by, ModelName, Conditions}, _From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  { Reply, NewState} = Handler:count_by(ModelName, Conditions, HandlerState),
-  {reply, Reply, State#state{handler_state = NewState}};
-handle_call({dirty,Fun},_From,
-            #state{handler = Handler,
-                   handler_state = HandlerState} = State) ->
-  {Reply, NewState} = Handler:dirty(Fun,HandlerState),
+  {Reply, NewState} = Handler:execute(Fun,HandlerState),
   {reply,Reply,State#state{handler_state = NewState}};
 handle_call({transaction,Fun},_From,
             #state{handler = Handler,
