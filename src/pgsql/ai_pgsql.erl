@@ -17,7 +17,7 @@ build_insert(Slot,FieldsAndValues)->
   {Fields, Values} =
         lists:foldl(
           fun({K, V}, {Fs, Vs}) ->
-              {[ai_pgsql_escape:field(K)|Fs], [V|Vs]}
+              {[ai_pgsql_escape:field(K)|Fs], [null(V)|Vs]}
           end, {[], []}, FieldsAndValues),
   NextSlot = Slot + erlang:length(Values),
   InsertSlots = lists:map(fun ai_pgsql_escape:slot/1,
@@ -43,7 +43,7 @@ build_update(Slot,FieldsAndValues)->
           IndexBin = erlang:integer_to_binary(Index),
           FieldName = ai_pgsql_escape:field(K),
           UpdateSlot = <<FieldName/binary, " = $", IndexBin/binary>>,
-          {Index+1,[UpdateSlot|Fs],[V|Vs]}
+          {Index+1,[UpdateSlot|Fs],[null(V)|Vs]}
       end, {Slot,[], []}, FieldsAndValues),
   UpdateSlotsCSV = ai_string:join(lists:reverse(Fields), <<",">>),
   {
@@ -95,3 +95,9 @@ build_result(Cols,Rows,undefined) ->
   ai_pgsql_row:to_map(Cols, Rows);
 build_result(Cols,Rows,ColFun)->
   ai_pgsql_row:to_map(Cols, Rows, ColFun).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+null(undefined)-> null;
+null(Other) -> Other.
