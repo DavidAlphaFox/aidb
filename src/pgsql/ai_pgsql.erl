@@ -5,6 +5,8 @@
          build_update/1,
          build_update/2,
          build_select/1,
+         build_cond/1,
+         build_cond/2,
          build_result/1,
          build_result/2
         ]).
@@ -58,6 +60,9 @@ build_select(Columns)->
   Columns0 =
     lists:map(fun ai_pgsql_escape:field/1,Columns),
   {ok,ai_string:join(Columns0,<<",">>)}.
+
+build_cond(Exprs) -> ai_pgsql_cond:build(1, Exprs).
+build_cond(Slot,Exprs) -> ai_pgsql_cond:build(Slot, Exprs).
 
 -spec build_result({ok,list(),list()} |
                    {ok,integer(),list(),list()}|

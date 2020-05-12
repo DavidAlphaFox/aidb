@@ -11,7 +11,7 @@
 -spec slot(Slot::integer())->binary().
 slot(Slot) ->
   N = ai_string:to_string(Slot),
-  <<$\s,$$,N/binary,$\s>>.
+  <<$$,N/binary>>.
 
 -spec field(
         {sql,column()} |
