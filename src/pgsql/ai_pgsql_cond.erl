@@ -64,6 +64,7 @@ transform({'not', Expr},#state{buffer = OldBuffer} = State) ->
               buffer = [Clauses0|OldBuffer],
               values = NewState#state.values
              };
+transform({Field,Value},State)-> transform({'==',Field,Value},State);
 transform({OP,Field,Value},
           #state{slot = Slot,
                  buffer = OldBuffer,
