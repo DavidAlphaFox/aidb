@@ -72,12 +72,13 @@ build_cond(Slot,Exprs) -> ai_pgsql_cond:build(Slot, Exprs).
         {ok,integer()} |
         {ok,integer(),map()}|
         {ok,map()}.
-build_result(Result) -> build_result(Result,undefined).
+build_result(Result) -> build_result(Result,undefiend).
 
 -spec build_result({ok,list(),list()} |
                    {ok,integer(),list(),list()}|
                    {ok,integer()}|
-                   {error,term()},function()|undefined )->
+                   {error,term()},
+                   function()|undefined|atom)->
         {error,not_persist} |
         {ok,integer()} |
         {ok,integer(),map()}|
@@ -96,7 +97,7 @@ build_result({ok,Count,Cols,Rows},ColFun)->
   end;
 build_result(Error,_ColFun) -> Error.
 
-build_result(Cols,Rows,undefined) ->
+build_result(Cols,Rows,atom) ->
   ai_pgsql_row:to_map(Cols, Rows);
 build_result(Cols,Rows,ColFun)->
   ai_pgsql_row:to_map(Cols, Rows, ColFun).
