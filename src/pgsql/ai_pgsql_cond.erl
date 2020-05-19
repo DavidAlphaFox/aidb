@@ -24,7 +24,7 @@ transform({'and', Exprs},#state{buffer = OldBuffer} = State) ->
   NewState = transform(Exprs,State#state{buffer = []}),
   Clauses = ai_string:join(
               lists:reverse(NewState#state.buffer),<<" AND ">>),
-  Clauses0 = <<" ( ",Clauses/binary," ) ">>,
+  Clauses0 = <<"( ",Clauses/binary," )">>,
   State#state{slot = NewState#state.slot,
               buffer = [Clauses0| OldBuffer],
               values = NewState#state.values};
@@ -32,7 +32,7 @@ transform({'or',Exprs},#state{buffer = OldBuffer} = State) ->
   NewState = transform(Exprs,State#state{buffer = []}),
   Clauses = ai_string:join(
               lists:reverse(NewState#state.buffer),<<" OR ">>),
-  Clauses0 = <<" ( ",Clauses/binary," ) ">>,
+  Clauses0 = <<"( ",Clauses/binary," )">>,
   State#state{slot = NewState#state.slot,
               buffer = [Clauses0| OldBuffer],
               values = NewState#state.values};
@@ -72,7 +72,7 @@ transform({'not', Expr},#state{buffer = OldBuffer} = State) ->
       Many ->
         Many0 = ai_string:join(
                   lists:reverse(Many),<<" AND ">>),
-        <<" ( ",Many0/binary," ) ">>
+        <<"( ",Many0/binary," )">>
     end,
   Clauses0 = <<" NOT ",Clauses/binary,$\s>>,
   State#state{slot = NewState#state.slot,
