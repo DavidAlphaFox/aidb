@@ -7,16 +7,19 @@ build(Slot,Exprs)->
       {undefined,[],Slot};
     true ->
       State = transform(Exprs,#state{slot = Slot}),
-      [Clauses] = State#state.buffer,
-      {Clauses,lists:reverse(State#state.values),State#state.slot}
+      Cond =
+        case State#state.buffer of
+          [Clause] -> Clause;
+          Clauses -> ai_string:join(
+                       lists:reverse(Clauses),<<" AND ">>)
+        end,
+      {Cond,lists:reverse(State#state.values),State#state.slot}
   end.
 
 transform(Exprs,State)
   when erlang:is_list(Exprs) ->
-  NewState = lists:foldl(fun transform/2,State,Exprs),
-  Clauses = ai_string:join(
-              lists:reverse(NewState#state.buffer),<<" AND ">>),
-  NewState#state{buffer = [Clauses]};
+  lists:foldl(fun transform/2,State,Exprs);
+
 transform({'and', Exprs},#state{buffer = OldBuffer} = State) ->
   NewState = transform(Exprs,State#state{buffer = []}),
   Clauses = ai_string:join(
@@ -63,7 +66,14 @@ transform({'not',{OP,Field,Value}},
              };
 transform({'not', Expr},#state{buffer = OldBuffer} = State) ->
   NewState = transform(Expr,State#state{buffer = []}),
-  [ Clauses ] = NewState#state.buffer,
+  Clauses =
+    case NewState#state.buffer of
+      [One] -> One;
+      Many ->
+        Many0 = ai_string:join(
+                  lists:reverse(Many),<<" AND ">>),
+        <<" ( ",Many0/binary," ) ">>
+    end,
   Clauses0 = <<" NOT ",Clauses/binary,$\s>>,
   State#state{slot = NewState#state.slot,
               buffer = [Clauses0|OldBuffer],
