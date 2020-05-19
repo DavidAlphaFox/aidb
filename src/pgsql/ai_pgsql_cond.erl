@@ -2,9 +2,14 @@
 -export([build/2]).
 -record(state,{slot = 1, buffer = [],values = []}).
 build(Slot,Exprs)->
-  State = transform(Exprs,#state{slot = Slot}),
-  [Clauses] = State#state.buffer,
-  {Clauses,lists:reverse(State#state.values),State#state.slot}.
+  if
+    (Exprs == []) or (Exprs == undefined)->
+      {undefined,[],Slot};
+    true ->
+      State = transform(Exprs,#state{slot = Slot}),
+      [Clauses] = State#state.buffer,
+      {Clauses,lists:reverse(State#state.values),State#state.slot}
+  end.
 
 transform(Exprs,State)
   when erlang:is_list(Exprs) ->
