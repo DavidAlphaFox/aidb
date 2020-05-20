@@ -12,6 +12,7 @@ is_datetime({{_, _, _} = Date, {H, M, S}}) ->
 is_datetime(_) -> false.
 
 cast(_, undefined) -> {ok, undefined};
+cast(_, null) -> {ok, null};
 cast(float, Data) when is_integer(Data) -> {ok, Data + 0.0};
 cast(float, Data) when is_list(Data) orelse is_binary(Data) -> cast_float(Data);
 cast(integer, Data) when is_float(Data) -> {ok, erlang:trunc(Data)};
