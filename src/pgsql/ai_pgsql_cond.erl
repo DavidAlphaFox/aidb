@@ -93,9 +93,13 @@ transform({OP,Field,Value},
   Clauses = <<FieldBinary/binary,
               Operator/binary,
               ValueBinary/binary>>,
+  Values0 =
+    if Values == [] -> OldValues;
+       true -> Values ++ OldValues
+    end,
   State#state{slot = NextSlot,
               buffer = [Clauses | OldBuffer],
-              values = Values ++ OldValues};
+              values = Values0};
 transform(Fun,#state{slot = Slot,
                     buffer = OldBuffer,
                     values = OldValues} = State) ->
@@ -126,16 +130,9 @@ value(_,ValueFun,Slot)
   erlang:apply(ValueFun, [Slot]);
 value('in',ValueList,Slot)
   when erlang:is_list(ValueList)->
-  InValues = lists:reverse(ValueList),
-  Length = erlang:length(InValues),
-  Holders = lists:seq(Slot,Slot + Length -1),
-  Slots =
-    lists:map(
-      fun(H)-> ai_pgsql_escape:slot(H) end,
-      Holders),
-  Slots0 = ai_string:join(Slots,<<",">>),
-  {<<" ( ",Slots0/binary," )">>,
-   InValues,Slot + Length};
+  InValues = lists:map(fun ai_pgsql_escape:value/1, ValueList),
+  InValues0 = ai_string:join(InValues,<<",">>),
+  {<<" ( ",InValues0/binary," )">>,[],Slot};
 value(_,{field,Field},Slot)->
   FieldBinary = ai_pgsql_escape:field(Field),
   {FieldBinary,[],Slot};
