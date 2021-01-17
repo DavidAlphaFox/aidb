@@ -5,8 +5,8 @@ ERLC_OPTS = +debug_info +warn_export_vars +warn_shadow_vars +warn_obsolete_guard
 
 DEPS = epgsql eredis ailib
 
-dep_epgsql_commit = 4.4.0
+dep_epgsql_commit = 4.5.0
 dep_eredis_commit = v1.2.0
-dep_ailib = git https://github.com/DavidAlphaFox/ailib.git v0.4.5
+dep_ailib = git https://github.com/DavidAlphaFox/ailib.git v0.4.6
 
 include erlang.mk
