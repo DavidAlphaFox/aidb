@@ -9,8 +9,7 @@ validate(Fields,Row)->
       fun(Key,Attrs,Acc)->
           case validate_null(Acc, Key, Attrs, Row) of
             {next,NewAcc}->
-              validate(Key,maps:get(Key,Row,undefiend),
-                       Attrs,NewAcc);
+              validate(Key,maps:get(Key,Row,undefiend),Attrs,NewAcc);
             {stop,NewAcc}-> NewAcc
           end
        end,[],Fields),
@@ -117,18 +116,11 @@ validate_length([{Opt, Validator} | T],Value, Opts, Length, Acc) ->
 
 
 number_validators(N) ->
-  #{
-    less_than   => {fun(X, Y) -> X < Y end,
-                    {less_than,N}},
-    greater_than  => {fun(X, Y) -> X > Y end,
-                      {greater_than,N}},
-    less_than_or_equal_to  => {fun(X, Y) -> X =< Y end,
-                               {less_than_or_equal_to,N}},
-    greater_than_or_equal_to => {fun(X, Y) -> X >= Y end,
-                                 {greater_than_or_equal_to,N}},
-    equal_to => {fun(X, Y) -> X == Y end,
-                 {equal_to,N}}
-   }.
+  #{less_than   => {fun(X, Y) -> X < Y end,{less_than,N}},
+    greater_than  => {fun(X, Y) -> X > Y end,{greater_than,N}},
+    less_than_or_equal_to  => {fun(X, Y) -> X =< Y end,{less_than_or_equal_to,N}},
+    greater_than_or_equal_to => {fun(X, Y) -> X >= Y end,{greater_than_or_equal_to,N}},
+    equal_to => {fun(X, Y) -> X == Y end,{equal_to,N}}}.
 
 is_length(Value, Value) -> undefined;
 is_length(_Length, Value) -> {wrong_length,Value}.

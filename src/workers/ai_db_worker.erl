@@ -20,10 +20,8 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {
-                handler,
-                handler_state
-               }).
+-record(state, {handler,
+                handler_state}).
 
 %%%===================================================================
 %%% API
@@ -61,10 +59,8 @@ init(Args) ->
   process_flag(trap_exit, true),
   Handler = maps:get(store_handler,Args),
   {ok,HandlerState} = Handler:init(Args),
-  {ok, #state{
-          handler = Handler,
-          handler_state = HandlerState
-         }}.
+  {ok, #state{handler = Handler,
+              handler_state = HandlerState}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -137,8 +133,7 @@ handle_info(Info, #state{
                 State :: term()) -> any().
 terminate(_Reason, #state{
                       handler = Handler,
-                      handler_state = HandlerState
-                     }) ->
+                      handler_state = HandlerState}) ->
   Handler:terminate(HandlerState),
   ok.
 

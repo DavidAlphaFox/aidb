@@ -84,9 +84,7 @@ error_message(Error)
 error_message(Error)-> Error.
 
 sql_error(Error)->
-  #{
-    severity => Error#error.severity,
+  #{severity => Error#error.severity,
     code => Error#error.code,
     codename => Error#error.codename,
-    message => Error#error.message
-   }.
+    message => Error#error.message}.

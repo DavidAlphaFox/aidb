@@ -28,15 +28,15 @@ cast(boolean, Data) when is_binary(Data) ->
   case lists:member(BinData, [<<"true">>, <<"1">>,<<"t">>]) of
     true -> {ok, true};
     false ->
-	    case lists:member(BinData, [<<"false">>, <<"0">>,<<"f">>]) of
-	      true -> {ok, false};
-	      false -> {error, {invalid, Data}}
-	    end
+      case lists:member(BinData, [<<"false">>, <<"0">>,<<"f">>]) of
+        true -> {ok, false};
+        false -> {error, {invalid, Data}}
+      end
   end;
 cast(date, {_, _, _} = Data) -> cast(datetime, {Data, {0, 0, 0}});
 cast(Type, Data)
     when erlang:is_binary(Data) andalso
-	   (Type == date orelse Type == datetime) ->
+         (Type == date orelse Type == datetime) ->
     try {ok, ai_iso8601:parse(Data)} catch
       _:_ -> {error, {invalid, Data}}
     end;
@@ -53,24 +53,22 @@ cast(Type, Data) ->
 
 
 primitives() ->
-  #{
-    string => fun erlang:is_binary/1,
+  #{string => fun erlang:is_binary/1,
     integer => fun erlang:is_integer/1,
     float => fun erlang:is_float/1,
     boolean => fun erlang:is_boolean/1,
     date => fun is_datetime/1,
     datetime => fun is_datetime/1,
     binary => fun erlang:is_binary/1,
-    custom => fun (_) -> true end
-  }.
+    custom => fun (_) -> true end}.
 
 cast_float(Data) ->
   case string:to_float(Data) of
     {error, no_float} ->
-	    case cast_integer(Data) of
-	      {ok, Integer} -> {ok, Integer + 0.0};
-	      Error -> Error
-	    end;
+      case cast_integer(Data) of
+        {ok, Integer} -> {ok, Integer + 0.0};
+        Error -> Error
+      end;
     {Float, _Rest} -> {ok, Float}
   end.
 
