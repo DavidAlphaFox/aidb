@@ -1,4 +1,4 @@
--module(t).
+-module(model_test).
 -compile({parse_transform,ai_db_orm}).
 -sql_module(ai_pgsql_orm).
 -table('tb_test').

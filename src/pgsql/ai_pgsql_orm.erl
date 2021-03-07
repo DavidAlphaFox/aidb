@@ -2,17 +2,18 @@
 -export([select/2,
          select/3,
          select/4,
-         select/5]).
+         select/5,
+         insert/2]).
 select(Module,Options) -> select(Module,Options,first,undefined,undefined).
 select(Module,Options,Type)-> select(Module,Options,Type,undefined,undefined).
 select(Module,Options,Type,Cond)-> select(Module,Options,Type,Cond,undefined).
 
 select(Module,Options,Type,Cond,Order)->
   Columns = case lists:keyfind(as, 1, Options) of
-              {as,true} -> ai_pgsql:build_select(erlang:apply(Module, '-alias_columns', []));
-             _-> ai_pgsql:build_select(erlang:apply(Module, '-columns', []))
+              {as,true} -> ai_pgsql:build_select(Module:'-alias_columns'());
+             _-> ai_pgsql:build_select(Module:'-columns'())
             end,
-  TableName = ai_pgsql_escape:field(ai_string:to_string(erlang:apply(Module, '-table',[]))),
+  TableName = ai_pgsql_escape:field(ai_string:to_string(Module:'-table'())),
   SQL0 = <<"SELECT ",Columns/binary," FROM ",TableName/binary>>,
   {CondSQL,CondValues,Next} =
     case Cond of
@@ -55,3 +56,24 @@ order_col({Col,desc}) ->
   Col0 = ai_pgsql_escape:field(ai_string:to_string(Col)),
   <<Col0/binary," DESC">>;
 order_col(Col)-> ai_pgsql_escape:field(ai_string:to_string(Col)).
+
+insert(Module,Record)->
+  PrimaryKey = Module:'-primary_key'(),
+  PrimaryKey0 = ai_pgsql_escape:field(ai_string:to_string(PrimaryKey)),
+  Columns =
+    case Module:'-autoincrement'() of
+      {ok,false} -> Module:'-columns'();
+      {ok,true} -> lists:delete(PrimaryKey, Module:'-columns'())
+    end,
+  Row = lists:foldl(
+          fun(Key,Acc)->
+              case erlang:apply(Module,Key,[Record]) of
+                undefined -> Acc;
+                Value -> [{Key,Value}|Acc]
+              end
+          end, [], Columns),
+  {Insert,Values,_} = ai_pgsql:build_insert(Row),
+  TableName = ai_pgsql_escape:field(ai_string:to_string(Module:'-table'())),
+  SQL = <<"INSERT INTO ",TableName/binary," ",Insert/binary,
+          " RETURING ",PrimaryKey0/binary>>,
+  fun(Conn) -> epgsql:equery(Conn,SQL,Values) end.

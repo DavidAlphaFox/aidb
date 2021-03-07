@@ -9,19 +9,23 @@ parse_transform(AST,Options)->
 trans(Ctx)->
   Fields  = ai_pt_helper:directives(Ctx,field),
   SQLModule = ai_pt_helper:directives(Ctx,sql_module),
-  TableName = ai_pt_helper:module_name(Ctx),
-  TableName1 =
+  ModelName = ai_pt_helper:module_name(Ctx),
+  TableName =
     case ai_pt_helper:directives(Ctx,table) of
       [Table] -> Table;
-      _ -> TableName
+      _ -> ModelName
     end,
-  Ctx1 = build_record(Ctx,TableName1,Fields),
-  Ctx2 = build_tablename_function(Ctx1,TableName1),
+  Ctx1 = build_record(Ctx,ModelName,Fields),
+  Ctx2 = build_tablename_function(Ctx1,TableName),
   Ctx3 = build_columns_functions(Ctx2,Fields),
   Ctx4 = build_type_functions(Ctx3, Fields),
-  build_common_functions(Ctx4,Fields).
+  Ctx5 = build_common_functions(Ctx4,Fields),
+  Ctx6 = build_get_functions(Ctx5, ModelName, Fields),
+  Ctx7 = build_set_functions(Ctx6, ModelName, Fields),
+  build_new_functions(Ctx7, ModelName).
 
-build_record(Ctx, TableName, Fields) ->
+
+build_record(Ctx, ModelName,Fields) ->
   FieldsDef = lists:foldl(
                 fun({Name, Options}, Acc) ->
                     Acc ++ case lists:keyfind(type, 1, Options) of
@@ -33,7 +37,7 @@ build_record(Ctx, TableName, Fields) ->
                                end
                            end
                 end, [], Fields),
-  ai_pt_helper:add_record(Ctx, TableName, FieldsDef).
+  ai_pt_helper:add_record(Ctx, ModelName, FieldsDef).
 
 build_tablename_function(Ctx,TableName) ->
   ai_pt_helper:add_function(Ctx, export, '-table',
@@ -46,8 +50,10 @@ build_type_functions(Ctx, Fields) ->
                     {type, Value} ->
                       [ai_pt:build_clause(
                          ai_pt:build_atom(FieldName),
-                         ai_pt:build_value(Value)) | Clauses];
-                    _ -> Clauses
+                         ai_pt:build_atom(Value)) | Clauses];
+                    _ -> [ai_pt:build_clause(
+                            ai_pt:build_atom(FieldName),
+                            ai_pt:build_atom(undefined)) | Clauses]
                   end
               end, [], Fields),
   ai_pt_helper:add_function(Ctx, export, '-type', Clauses).
@@ -95,12 +101,16 @@ build_common_functions(Ctx, Fields) ->
               fun({_,Options})->
                   case lists:keyfind(primary, 1, Options) of
                     {primary,_} ->true;
-                    _ -> false
+                    _ ->
+                      case lists:keyfind(autoincrement,1,Options) of
+                        {autoincrement,_} -> true;
+                        _ -> false
+                      end
                   end
               end, Fields),
   case Primary of
     [{FieldName,_}] ->
-      ai_pt_helper:add_function(Ctx1,export,'-primary',
+      ai_pt_helper:add_function(Ctx1,export,'-primary_key',
                                 ai_pt:build_clause([],ai_pt:build_tuple({ok,FieldName})));
     _ ->
       ai_pt_helper:add_function(Ctx1,export,'-primary',
@@ -121,3 +131,58 @@ build_common_clauses(Fields, Option, Default) ->
         Clauses ++ [ai_pt:build_clause(ai_pt:build_atom(FieldName),
                                        ai_pt:build_tuple(Value))]
     end, [], Fields).
+
+
+build_get_functions(Ctx, ModelName, Fields) ->
+  lists:foldl(fun({FieldName, Options}, Acc) ->
+        case lists:keyfind(type, 1, Options) of
+          {type, _} ->
+            Clause = ai_pt:build_clause(
+                       ai_pt:build_var('R'),
+                       ai_pt:build_get_record_field('R', ModelName, FieldName)),
+            ai_pt_helper:add_function(Acc, export, FieldName, Clause);
+          _ -> Acc
+        end
+    end, Ctx, Fields).
+build_set_functions(Ctx, ModelName, Fields) ->
+  lists:foldl(fun({FieldName, Options},Acc) ->
+        case lists:keyfind(type, 1, Options) of
+          {type, Def} ->
+            V = ai_pt:build_var('V'),
+            Type = ai_pt:build_atom(Def),
+            CastCall = ai_pt:build_call(ai_db_type, cast, [Type, V]),
+            V1 = ai_pt:build_var('V1'),
+            VT = ai_pt:build_tuple({ok,V1}),
+            CastV1 = ai_pt:build_match(VT, CastCall),
+            Field = ai_pt:build_record_field(FieldName, V1),
+            Record = ai_pt:build_record('R', ModelName, [Field]),
+            R = ai_pt:build_var('R'),
+            Clause = [
+                ai_pt:build_clause([ai_pt:build_atom(undefined), R],[R]),
+                ai_pt:build_clause([ai_pt:build_atom(null), R],
+                                   ai_pt:build_record('R', ModelName,
+                                                      [ai_pt:build_record_field(FieldName, ai_pt:build_atom(null))])),
+                ai_pt:build_clause([V, R],[CastV1, Record])],
+            ai_pt_helper:add_function(Acc, export, FieldName, Clause);
+          _ -> Acc
+        end
+    end, Ctx, Fields).
+
+build_new_functions(Ctx,ModelName)->
+  M = ai_pt:build_var('M'),
+  IsMap = ai_pt:build_call(is_map,M),
+  Clause0 = ai_pt:build_clause([M],[IsMap],
+                               [ai_pt:build_call(new,ai_pt:build_call(maps,to_list,[M]))]),
+  L = ai_pt:build_var('L'),
+  IsList = ai_pt:build_call(is_list,L),
+  R = ai_pt:build_var('R'),
+  F = ai_pt:build_var('F'),
+  V = ai_pt:build_var('V'),
+  Acc = ai_pt:build_var('Acc'),
+  FunBody = ai_pt:build_call(ModelName, F, [V, Acc]),
+  FunClause = ai_pt:build_clause([ai_pt:build_tuple({F, V}), Acc],FunBody),
+  Fun = ai_pt:build_fun(FunClause),
+  Body = [ai_pt:build_match(R, ai_pt:build_record(ModelName,[])),
+          ai_pt:build_call(lists, foldl, [Fun, R, L])],
+  Clause1 = ai_pt:build_clause([L], [IsList],Body),
+  ai_pt_helper:add_function(Ctx,export,new,[Clause0,Clause1]).
