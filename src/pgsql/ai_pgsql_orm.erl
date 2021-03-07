@@ -56,12 +56,9 @@ build_columns_functions(Ctx,Fields)->
   Clauses = lists:foldl(
               fun({as,Col,Alias},Acc)->
                   [ai_pt:build_clause([ai_pt:build_value(Col)],ai_pt:build_value(Alias))|Acc];
-                 (_,Acc) -> Acc
+                 (Col,Acc) -> [ai_pt:build_clause([ai_pt:build_value(Col)],ai_pt:build_value(Col))|Acc]
               end,[],AliasColumns),
-  Ctx0 =
-    if erlang:length(Clauses) == 0 -> Ctx;
-       true->ai_pt_helper:add_function(Ctx,export,'-alias',Clauses)
-    end,
+  Ctx0 = ai_pt_helper:add_function(Ctx,export,'-alias',Clauses),
   Ctx1 = ai_pt_helper:add_function(Ctx0, export, '-columns',
                                    ai_pt:build_clause([], ai_pt:build_value(Columns))),
   ai_pt_helper:add_function(Ctx1,export,'-alias_columns',
