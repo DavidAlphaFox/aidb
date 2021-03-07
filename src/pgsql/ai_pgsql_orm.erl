@@ -1,81 +1,57 @@
 -module(ai_pgsql_orm).
--export([parse_transform/2]).
+-export([select/2,
+         select/3,
+         select/4,
+         select/5]).
+select(Module,Options) -> select(Module,Options,first,undefined,undefined).
+select(Module,Options,Type)-> select(Module,Options,Type,undefined,undefined).
+select(Module,Options,Type,Cond)-> select(Module,Options,Type,Cond,undefined).
 
-parse_transform(AST,Options)->
-  AST0 = ai_pt_helper:transform(fun trans/1,AST,Options),
-  io:format("~p~n",[AST0]),
-  AST0.
-
-trans(Ctx)->
-  Fields  = ai_pt_helper:directives(Ctx,field),
-  TableName = ai_pt_helper:module_name(Ctx),
-  TableName1 =
-    case ai_pt_helper:directives(Ctx,table) of
-      [Table] -> Table;
-      _ -> TableName
+select(Module,Options,Type,Cond,Order)->
+  Columns = case lists:keyfind(as, 1, Options) of
+              {as,true} -> ai_pgsql:build_select(erlang:apply(Module, '-alias_columns', []));
+             _-> ai_pgsql:build_select(erlang:apply(Module, '-columns', []))
+            end,
+  TableName = ai_pgsql_escape:field(ai_string:to_string(erlang:apply(Module, '-table',[]))),
+  SQL0 = <<"SELECT ",Columns/binary," FROM ",TableName/binary>>,
+  {CondSQL,CondValues,Next} =
+    case Cond of
+      undefined -> {undefined,[],1};
+      _ -> ai_pgsql:build_cond(1,Cond)
     end,
-  Ctx1 = build_record(Ctx,TableName1,Fields),
-  Ctx2 = build_tablename_function(Ctx1,TableName1),
-  Ctx3 = build_columns_functions(Ctx2,Fields),
-  build_type_functions(Ctx3, Fields).
+  SQL1 =
+    if CondSQL == undefined -> SQL0;
+       true -> <<SQL0/binary, " WHERE ",CondSQL/binary>>
+    end,
+  SQL2 =
+    case Order of
+      undefined -> SQL1;
+      _ ->
+        [OrderH|OrderT] = Order,
+        OrderSQL = lists:foldl(
+                     fun(OrderCol,Acc)->
+                         OrderCol0 = order_col(OrderCol),
+                         <<Acc/binary,",",OrderCol0/binary>>
+                     end,order_col(OrderH),OrderT),
+        <<SQL1/binary," ORDER BY ",OrderSQL>>
+    end,
+  {SQL3,Values} = case Type of
+                    first -> {<<SQL2/binary," LIMIT 1">>,CondValues};
+                    Type when is_integer(Type)->
+                      Slot = ai_pgsql_escape:slot(Next),
+                      {<<SQL2/binary," LIMIT ",Slot/binary>>,CondValues ++ [Type]};
+                    {Limit,Offset} ->
+                      LSlot = ai_pgsql_escape:slot(Next),
+                      OSlot = ai_pgsql_escape:slot(Next + 1),
+                      {<<SQL2/binary," LIMIT ",LSlot/binary," OFFSET ",OSlot/binary>>,CondValues ++ [Limit,Offset]};
+                    all -> {SQL2,CondValues}
+                  end,
+  fun(Conn)-> epgsql:equery(Conn,SQL3,Values) end.
 
-build_record(Ctx, TableName, Fields) ->
-  FieldsDef = lists:foldl(
-                fun({Name, Options}, Acc) ->
-                    Acc ++ case lists:keyfind(type, 1, Options) of
-                             {type, Type} -> [{Name, Type}];
-                             _ ->
-                               case lists:keyfind(habtm, 1, Options) of
-                                 {habtm, Ref} -> [{list_to_atom(atom_to_list(Ref) ++ "_habtm"), term}];
-                                 _ -> []
-                               end
-                           end
-                end, [], Fields),
-  ai_pt_helper:add_record(Ctx, TableName, FieldsDef).
-
-build_tablename_function(Ctx,TableName) ->
-  ai_pt_helper:add_function(Ctx, export, '-table',
-                            ai_pt:build_clause([], ai_pt:build_value(TableName))).
-
-build_type_functions(Ctx, Fields) ->
-  Clauses = lists:foldl(
-              fun({FieldName, Options}, Clauses) ->
-                  case lists:keyfind(type, 1, Options) of
-                    {type, Value} ->
-                      [ai_pt:build_clause(
-                         ai_pt:build_atom(FieldName),
-                         ai_pt:build_value(Value)) | Clauses];
-                    _ -> Clauses
-                  end
-              end, [], Fields),
-  ai_pt_helper:add_function(Ctx, export, '-type', Clauses).
-
-build_columns_functions(Ctx,Fields)->
-  Columns = lists:map(fun({Col,_}) -> Col end,Fields),
-  AliasColumns = lists:map(fun(Col)-> alias_column(Col) end,Columns),
-  Clauses = lists:foldl(
-              fun({as,Col,Alias},Acc)->
-                  [ai_pt:build_clause([ai_pt:build_value(Col)],ai_pt:build_value(Alias))|Acc];
-                 (Col,Acc) -> [ai_pt:build_clause([ai_pt:build_value(Col)],ai_pt:build_value(Col))|Acc]
-              end,[],AliasColumns),
-  Ctx0 = ai_pt_helper:add_function(Ctx,export,'-alias',Clauses),
-  Ctx1 = ai_pt_helper:add_function(Ctx0, export, '-columns',
-                                   ai_pt:build_clause([], ai_pt:build_value(Columns))),
-  ai_pt_helper:add_function(Ctx1,export,'-alias_columns',
-                            ai_pt:build_clause([], ai_pt:build_value(AliasColumns))).
-%% 列别名
-alias_column(Col)->
-  Col1 = erlang:atom_to_list(Col),
-  L = string:split(Col1,"_"),
-  Length = erlang:length(L),
-  if Length > 1 ->
-      [H|T] = L,
-      T1 = lists:map(
-             fun(I) ->
-                 [CH|CR] = I,
-                 CH1 = string:uppercase([CH]),
-                 [CH1|CR]
-             end,T),
-      {as,Col,erlang:list_to_atom(lists:flatten([H|T1]))};
-     true -> Col
-  end.
+order_col({Col,asc})->
+  Col0 = ai_pgsql_escape:field(ai_string:to_string(Col)),
+  <<Col0/binary," ASC">>;
+order_col({Col,desc}) ->
+  Col0 = ai_pgsql_escape:field(ai_string:to_string(Col)),
+  <<Col0/binary," DESC">>;
+order_col(Col)-> ai_pgsql_escape:field(ai_string:to_string(Col)).

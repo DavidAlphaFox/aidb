@@ -1,1 +1,2 @@
--compile({parse_transform,ai_pgsql_orm}).
+-compile({parse_transform,ai_db_orm}).
+-sql_module(ai_pgsql_orm).
